@@ -54,3 +54,12 @@ Re-run the local API checks with a running development server using `python3 scr
 - Moved the visibility note into a full-width, nonwrapping grid row with responsive font sizing.
 - Retained individual-date selection, saved edit access, existing edit-link handling, and CSV export. No API or database changes were made.
 - Visual browser verification remains unavailable in this session.
+
+## Returning members and empty schedules — November 4, 2026
+
+- Empty saved schedules are excluded from Team Schedule, its response count, and CSV export. The underlying edit identity remains available for later changes.
+- “Edit on another device” copies a private fragment-based edit link after saving. Importing it in another browser restores the same record and token; it is removed from the address bar after import.
+- Edit-link tests passed for exact identity recovery, preservation of the GitHub project path, fragment-only credentials, and malformed-link rejection.
+- Local API checks passed for clearing all dates, reading the persisted empty response, and adding dates again with the original token from the other allowed origin, along with the existing authorization and revision checks. Local test data was removed.
+- GitHub static build, Sites build, and TypeScript check passed. Browser visual/interaction QA remains unavailable.
+- No production responses were changed, and no owner-wide deletion control was added in this revision.

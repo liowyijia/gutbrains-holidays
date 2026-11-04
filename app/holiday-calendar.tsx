@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DAYS, START, END, readable, ranges, weekend, type EditIdentity, type TeamResponse } from "@/lib/calendar";
+import { identityFromFragment, privateEditLink, validIdentity } from "@/lib/edit-access";
 
 const STORAGE_KEY = "days-away-edit-v1";
 const MONTHS = [
@@ -10,10 +11,6 @@ const MONTHS = [
   { year: 2027, month: 0, label: "January", foot: "01 / New Year’s Day" },
 ];
 const HOLIDAYS: Record<string, string> = { "2026-11-26": "Thanksgiving", "2026-12-25": "Christmas Day", "2027-01-01": "New Year’s Day" };
-
-function validIdentity(value: unknown): value is EditIdentity {
-  return !!value && typeof value === "object" && "id" in value && "token" in value && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.token === "string" && /^[a-f0-9]{64}$/.test(value.token);
-}
 
 export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinationUrl }: { apiBase?: string; siteBase?: string; destinationUrl?: string } = {}) {
   const [team, setTeam] = useState<TeamResponse[]>([]);
@@ -32,6 +29,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   const mouseHandled = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const sortedDays = [...selected].sort();
+  const scheduledTeam = team.filter(row => row.days.length > 0);
   const dirty = !!saved && (name.trim() !== saved.name || JSON.stringify(sortedDays) !== JSON.stringify(saved.days));
   const canSave = !loading && !saving && name.trim().length >= 2 && (!saved || dirty);
 
@@ -56,9 +54,8 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       const fragment = new URLSearchParams(window.location.hash.slice(1));
       const edit = fragment.get("edit");
       if (edit) {
-        const [id, token] = edit.split(".");
-        const value = { id, token };
-        if (validIdentity(value)) {
+        const value = identityFromFragment(window.location.hash);
+        if (value) {
           currentIdentity = value;
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); } catch { setShowRecovery(true); }
         } else setError("This edit link is invalid. Check that you copied the complete link.");
@@ -145,9 +142,20 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
     }
   }
 
+  async function copyEditLink() {
+    if (!identity) return;
+    try {
+      await navigator.clipboard.writeText(privateEditLink(origin + "/", identity));
+      setToast("Private edit link copied. Open it on your other device. Keep it private.");
+    } catch {
+      setShowRecovery(true);
+      setToast("Open the private edit link below and bookmark it for your other device.");
+    }
+  }
+
   function download() {
     const cell = (value: string) => '"' + (/^[=+@\-\t\r]/.test(value) ? "'" : "") + value.replaceAll('"', '""') + '"';
-    const csv = [["Name", ...DAYS], ...team.map(row => [row.name, ...DAYS.map(day => row.days.includes(day) ? "Away" : "")])].map(row => row.map(cell).join(",")).join("\r\n");
+    const csv = [["Name", ...DAYS], ...scheduledTeam.map(row => [row.name, ...DAYS.map(day => row.days.includes(day) ? "Away" : "")])].map(row => row.map(cell).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     const link = document.createElement("a"); link.href = url; link.download = "duke-days-away-2026-27.csv"; link.click(); URL.revokeObjectURL(url);
   }
@@ -222,20 +230,20 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
           <h3 className="micro" id="plan-label">Selected dates</h3>
           <p className="plan-count" aria-live="polite">{String(selected.size).padStart(2, "0")}</p>
           <p className="plan-count-label">{selected.size === 1 ? "day" : "days"} away</p>
-          <div className="plan-date-list">{selected.size ? ranges(sortedDays).map(range => <p key={range}>{range}</p>) : <p className="empty-note">Save with no dates to indicate no planned absence.</p>}</div>
+          <div className="plan-date-list">{selected.size ? ranges(sortedDays).map(range => <p key={range}>{range}</p>) : <p className="empty-note">No days away. Saving removes your name from Team Schedule.</p>}</div>
           <button className="primary" onClick={save} disabled={!canSave}><span>{saving ? "Saving…" : saved && !dirty ? "Schedule saved" : "Save changes"}</span><span aria-hidden="true">{saved && !dirty ? "✓" : "↗"}</span></button>
-          {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p>{dirty && <div className="edit-actions"><button className="subtle-button" onClick={reloadSaved}>Discard changes</button></div>}</>}
-          {showRecovery && identity && <a className="recovery" href={`${origin}/#edit=${identity.id}.${identity.token}`} target="_blank" rel="noreferrer">Open your private edit link and bookmark it ↗</a>}
+          {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p><div className="edit-actions">{dirty && <button className="subtle-button" onClick={reloadSaved}>Discard changes</button>}{identity && <button className="subtle-button" onClick={copyEditLink}>Edit on another device ↗</button>}</div></>}
+          {showRecovery && identity && <a className="recovery" href={privateEditLink(origin + "/", identity)} target="_blank" rel="noreferrer">Open your private edit link and bookmark it ↗</a>}
         </aside>
         <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
       </section>
       <section className="team" aria-labelledby="team-label">
-        <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta"><span className="micro">{loading ? "Loading…" : `${String(team.length).padStart(2, "0")} ${team.length === 1 ? "response" : "responses"}`}</span>{team.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
-        {team.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules">
+        <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta"><span className="micro">{loading ? "Loading…" : `${String(scheduledTeam.length).padStart(2, "0")} ${scheduledTeam.length === 1 ? "response" : "responses"}`}</span>{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
+        {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules">
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span><span className="month-label" style={{ gridColumn: "2 / span 8" }} role="columnheader">NOV / 2026</span><span className="month-label" style={{ gridColumn: "10 / span 31" }} role="columnheader">DEC / 2026</span><span className="month-label" style={{ gridColumn: "41 / span 10" }} role="columnheader">JAN / 2027</span></div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
-          {team.map(row => <div className={`timeline-row person ${row.id === identity?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${row.days.length ? ranges(row.days).join(", ") : "No days away"}`}><strong>{row.name}{row.id === identity?.id ? " (you)" : ""}</strong><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
-        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No responses yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
+          {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === identity?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${row.days.length ? ranges(row.days).join(", ") : "No days away"}`}><strong>{row.name}{row.id === identity?.id ? " (you)" : ""}</strong><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
+        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No days away saved."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved days away appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
         <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span></div><p className="tiny"><span className="live-dot" aria-hidden="true"/>{loadError ? "Updates paused · Retry above" : "Shared calendar · Refreshes every 30 seconds"}</p></div>
       </section>
     </main>

@@ -83,7 +83,15 @@ try:
     mine = next(r for r in shared["responses"] if r["id"] == created_id)
     assert mine["days"] == [] and mine["revision"] == 2
     assert "token" not in mine and "edit_token_hash" not in mine
-    print("PASS: GitHub CORS/preflight, creation, shared persistence, zero-day response, date validation, duplicate names, origin checks, private edits, stale-edit protection, token privacy.")
+    # A member can return with the same edit identity after clearing all dates,
+    # including from the other allowed browser origin, and add dates again.
+    restore = {"id": created_id, "name": name, "days": ["2027-01-04"], "revision": mine["revision"]}
+    status, restored = request("PUT", restore, token=token, origin=PERSONAL_ORIGIN)
+    assert status == 200 and restored["response"]["revision"] == 3
+    status, shared = request()
+    mine = next(r for r in shared["responses"] if r["id"] == created_id)
+    assert mine["days"] == ["2027-01-04"], "Clearing dates must preserve later edit access"
+    print("PASS: GitHub CORS/preflight, creation, shared persistence, clear-and-restore editing, date validation, duplicate names, origin checks, private edits, stale-edit protection, token privacy.")
 finally:
     for file in glob.glob(".wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite"):
         with sqlite3.connect(file, timeout=10) as db:
