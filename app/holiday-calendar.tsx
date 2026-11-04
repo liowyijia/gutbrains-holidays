@@ -27,9 +27,6 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
   const [showRecovery, setShowRecovery] = useState(false);
-  const [showRange, setShowRange] = useState(false);
-  const [rangeStart, setRangeStart] = useState(START);
-  const [rangeEnd, setRangeEnd] = useState(START);
   const [origin, setOrigin] = useState("");
   const dragMode = useRef<boolean | null>(null);
   const mouseHandled = useRef(false);
@@ -138,21 +135,14 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
     finally { setSaving(false); }
   }
 
-  async function copyLink(privateLink = false) {
-    const link = origin + "/" + (privateLink && identity ? `#edit=${identity.id}.${identity.token}` : "");
+  async function copyLink() {
+    const link = origin + "/";
     try {
       await navigator.clipboard.writeText(link);
-      setToast(privateLink ? "Private edit link copied. Keep it for yourself." : "Team calendar link copied.");
+      setToast("Team calendar link copied.");
     } catch {
-      if (privateLink) setShowRecovery(true);
-      else setToast("Copy the calendar address from your browser to share it.");
+      setToast("Copy the calendar address from your browser to share it.");
     }
-  }
-
-  function addRange() {
-    if (rangeStart > rangeEnd || rangeStart < START || rangeEnd > END) { setError("Choose an end date on or after the start, within November 23–January 10."); return; }
-    setSelected(previous => new Set([...previous, ...DAYS.filter(day => day >= rangeStart && day <= rangeEnd)]));
-    setError(""); setShowRange(false);
   }
 
   function download() {
@@ -188,11 +178,19 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       <section className="hero" aria-labelledby="hero-title">
         <h1 id="hero-title">Holiday Season <span>2026 / 2027</span></h1>
       </section>
+      <section className="instructions" aria-labelledby="instructions-title">
+        <h2 className="micro" id="instructions-title">Instructions</h2>
+        <ol role="list">
+          <li>Enter your name</li>
+          <li>Click on the days when you are away</li>
+          <li>Save changes</li>
+        </ol>
+      </section>
       {loadError && <div className="notice error" role="alert">{loadError}<button className="subtle-button" onClick={retryLoad}>Retry</button></div>}
       {error && <div className="notice error" role="alert">{error}{saved && <button className="subtle-button" onClick={reloadSaved}>Reload saved schedule</button>}</div>}
       <section className="workspace" aria-labelledby="your-dates">
         <div className="editor">
-          <div className="section-heading"><span className="micro">01 /</span><h2 id="your-dates">Your days away</h2></div>
+          <div className="section-heading"><span className="micro">01 /</span><h2 id="your-dates">Your Days Away</h2></div>
           <div className="name-row"><label htmlFor="name" className="micro">Your name</label><input ref={nameInput} id="name" autoComplete="name" placeholder="First and last name" value={name} onChange={event => setName(event.target.value)} maxLength={60} disabled={loading || saving}/></div>
           <div className="calendar-help"><p>Click days to select. Click again to undo.</p><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your selection</span></div>
           <div className="months">
@@ -219,22 +217,20 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
               </section>;
             })}
           </div>
-          <div className="editor-bottom"><p className="tiny">Whole days · Weekends included</p><div className="range-toggle"><button className="subtle-button" onClick={() => setShowRange(!showRange)} aria-expanded={showRange} disabled={saving || loading}>Add a date range</button><button className="subtle-button" onClick={() => setSelected(new Set())} disabled={saving || loading || !selected.size}>Clear</button></div></div>
-          {showRange && <div className="range-form"><label>From<input type="date" value={rangeStart} min={START} max={END} onChange={event => setRangeStart(event.target.value)}/></label><label>Through<input type="date" value={rangeEnd} min={rangeStart || START} max={END} onChange={event => setRangeEnd(event.target.value)}/></label><button onClick={addRange} disabled={saving}>Add days</button></div>}
         </div>
         <aside className="plan" aria-labelledby="plan-label">
           <h3 className="micro" id="plan-label">Selected dates</h3>
           <p className="plan-count" aria-live="polite">{String(selected.size).padStart(2, "0")}</p>
           <p className="plan-count-label">{selected.size === 1 ? "day" : "days"} away</p>
           <div className="plan-date-list">{selected.size ? ranges(sortedDays).map(range => <p key={range}>{range}</p>) : <p className="empty-note">Save with no dates to indicate no planned absence.</p>}</div>
-          <button className="primary" onClick={save} disabled={!canSave}><span>{saving ? "Saving…" : saved && !dirty ? "Schedule saved" : saved ? "Save changes" : "Save my schedule"}</span><span aria-hidden="true">{saved && !dirty ? "✓" : "↗"}</span></button>
-          <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
-          {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p><div className="edit-actions"><button className="subtle-button" onClick={() => copyLink(true)}>Copy my private edit link</button>{dirty && <button className="subtle-button" onClick={reloadSaved}>Discard changes</button>}</div></>}
+          <button className="primary" onClick={save} disabled={!canSave}><span>{saving ? "Saving…" : saved && !dirty ? "Schedule saved" : "Save changes"}</span><span aria-hidden="true">{saved && !dirty ? "✓" : "↗"}</span></button>
+          {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p>{dirty && <div className="edit-actions"><button className="subtle-button" onClick={reloadSaved}>Discard changes</button></div>}</>}
           {showRecovery && identity && <a className="recovery" href={`${origin}/#edit=${identity.id}.${identity.token}`} target="_blank" rel="noreferrer">Open your private edit link and bookmark it ↗</a>}
         </aside>
+        <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
       </section>
       <section className="team" aria-labelledby="team-label">
-        <div className="team-title"><div><span className="micro">02 / Shared plans</span><h2 id="team-label">Team schedule</h2></div><div className="team-meta"><span className="micro">{loading ? "Loading…" : `${String(team.length).padStart(2, "0")} ${team.length === 1 ? "response" : "responses"}`}</span>{team.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
+        <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta"><span className="micro">{loading ? "Loading…" : `${String(team.length).padStart(2, "0")} ${team.length === 1 ? "response" : "responses"}`}</span>{team.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
         {team.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules">
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span><span className="month-label" style={{ gridColumn: "2 / span 8" }} role="columnheader">NOV / 2026</span><span className="month-label" style={{ gridColumn: "10 / span 31" }} role="columnheader">DEC / 2026</span><span className="month-label" style={{ gridColumn: "41 / span 10" }} role="columnheader">JAN / 2027</span></div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>

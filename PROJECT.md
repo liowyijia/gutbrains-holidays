@@ -14,7 +14,7 @@ The client accepts separate API and asset bases so share links and the favicon w
 - Month grids start on Sunday. Changing the weekday order does not shift the stored date values or the seasonal date range.
 - Name-based responses; no sign-in. A public calendar link shows everyone's saved schedules.
 - Each response has a random private edit token. Only its SHA-256 hash is stored in D1. The plain token is returned once at creation, retained in browser storage, and included in an optional private edit link's fragment. Keep that link private.
-- Click or drag to select days on desktop; click/tap or add a date range on other devices. Zero-day responses explicitly indicate no planned time away.
+- Click or drag to select days on desktop; click/tap on other devices. Zero-day responses explicitly indicate no planned time away. Date-range and clear controls are omitted from the interface.
 - Shared timeline, 30-second refresh, CSV export, duplicate-name checks, and revision checks to prevent accidental concurrent overwrites.
 - Responses are stored in the Site's D1 database, never in the research repository. Browser storage holds edit access only.
 
@@ -24,7 +24,7 @@ Near-white paper, near-black type, thin grid lines, no shadows or decorative ima
 
 The header and favicon share `public/favicon.svg`, a transparent vector recreation of the provided lab mark: an outlined blue hexagon with a smaller filled blue hexagon in its center. The mark blue is visually matched as `#5f8bb1`. Keep the mark's surrounding area and its inner gap transparent; the reference screenshot's dark background is not part of the logo. Increment the icon URL query when changing it to refresh cached browser favicons.
 
-The page uses the direct heading “Holiday Season 2026 / 2027” and concise functional labels. Avoid taglines, promotional copy, and repeated explanations. Preserve the numbered “02 / Shared plans” label and CSV export. The header identifies the “Laboratory of Gut-Brain Neurobiology” and “Duke University,” as shown in the user's lab website screenshots. Keep the prototype's light background and calendar layout rather than adopting the reference website's dark background.
+The page uses the direct heading “Holiday Season 2026 / 2027” and concise functional labels. Avoid taglines, promotional copy, and repeated explanations. The two section headings share a single style: “01 / Your Days Away” and “02 / Team Schedule.” Preserve CSV export. A numbered instructions section says to enter a name, click days away, and save changes. The visibility note sits in a full-width row to keep it on one line. The private-edit-link copy button is omitted; browser-based edit access and existing edit links still work. The header identifies the “Laboratory of Gut-Brain Neurobiology” and “Duke University,” as shown in the user's lab website screenshots. Keep the prototype's light background and calendar layout rather than adopting the reference website's dark background.
 
 ## Development
 

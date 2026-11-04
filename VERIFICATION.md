@@ -45,3 +45,12 @@ Re-run the local API checks with a running development server using `python3 scr
 - Browser visual and interaction QA remains unavailable in this session.
 - GitHub Pages inherits the account's existing `yijialiow.com` domain. Verified HTTPS HTTP 200 at the new project path and GitHub's redirect from `liowyijia.github.io`.
 - Permitted both observed account origins for API access. The original Site forwards visitors and their stored edit identity to the personal-domain project path.
+
+## Interface simplification — November 4, 2026
+
+- GitHub static build, backend production build, and TypeScript check passed.
+- Removed the whole-days/weekends row, date-range controls, clear control, and private-edit-link copy button, including unused client state and handlers.
+- Added the requested three-step instructions and consistent numbered section headings.
+- Moved the visibility note into a full-width, nonwrapping grid row with responsive font sizing.
+- Retained individual-date selection, saved edit access, existing edit-link handling, and CSV export. No API or database changes were made.
+- Visual browser verification remains unavailable in this session.
