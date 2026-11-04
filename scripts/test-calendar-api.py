@@ -14,6 +14,7 @@ import uuid
 
 BASE = os.environ.get("CALENDAR_TEST_URL", "http://127.0.0.1:8787")
 GITHUB_ORIGIN = "https://liowyijia.github.io"
+PERSONAL_ORIGIN = "https://yijialiow.com"
 assert urllib.parse.urlparse(BASE).hostname in {"localhost", "127.0.0.1"}
 name = "Prototype test " + uuid.uuid4().hex[:10]
 created_id = None
@@ -40,13 +41,13 @@ def request(method="GET", data=None, token=None, origin=BASE):
 
 try:
     preflight = urllib.request.Request(BASE + "/api/responses", method="OPTIONS", headers={
-        "Origin": GITHUB_ORIGIN,
+        "Origin": PERSONAL_ORIGIN,
         "Access-Control-Request-Method": "PUT",
         "Access-Control-Request-Headers": "content-type,authorization",
     })
     with urllib.request.urlopen(preflight, timeout=15) as response:
         assert response.status == 204
-        assert response.headers["Access-Control-Allow-Origin"] == GITHUB_ORIGIN
+        assert response.headers["Access-Control-Allow-Origin"] == PERSONAL_ORIGIN
         assert "authorization" in response.headers["Access-Control-Allow-Headers"].lower()
         assert "PUT" in response.headers["Access-Control-Allow-Methods"]
     shared_read = urllib.request.Request(BASE + "/api/responses", headers={"Origin": GITHUB_ORIGIN})
@@ -60,7 +61,7 @@ try:
     assert status == 400, "Out-of-season dates must be rejected"
     status, _ = request("POST", {"name": name, "days": ["2026-11-26"]}, origin="https://example.com")
     assert status == 403, "Cross-origin writes must be rejected"
-    status, created = request("POST", {"name": name, "days": ["2026-12-25", "2026-11-26", "2026-11-26"]}, origin=GITHUB_ORIGIN)
+    status, created = request("POST", {"name": name, "days": ["2026-12-25", "2026-11-26", "2026-11-26"]}, origin=PERSONAL_ORIGIN)
     assert status == 201, created.get("error")
     created_id = created["response"]["id"]
     token = created["token"]

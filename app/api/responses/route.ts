@@ -3,7 +3,7 @@ import { DAYS, type TeamResponse } from "@/lib/calendar";
 
 export const dynamic = "force-dynamic";
 const daySet = new Set(DAYS);
-const githubOrigin = "https://liowyijia.github.io";
+const externalOrigins = new Set(["https://liowyijia.github.io", "https://yijialiow.com"]);
 type Stored = { id: string; name: string; days: string; revision: number; updated_at: string; edit_token_hash: string };
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
@@ -31,7 +31,7 @@ async function body(request: Request) {
 }
 function allowedOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  return !!origin && (origin === new URL(request.url).origin || origin === githubOrigin);
+  return !!origin && (origin === new URL(request.url).origin || externalOrigins.has(origin));
 }
 async function getResponses() {
   try {
@@ -84,8 +84,9 @@ async function updateResponse(request: Request) {
 
 function cors(response: Response, request: Request) {
   response.headers.set("Vary", "Origin");
-  if (request.headers.get("origin") === githubOrigin) {
-    response.headers.set("Access-Control-Allow-Origin", githubOrigin);
+  const origin = request.headers.get("origin");
+  if (origin && externalOrigins.has(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
   }
   return response;
 }

@@ -4,7 +4,7 @@ A shared holiday absence calendar for the Duke team. Source belongs in `Duke/04-
 
 ## GitHub hosting
 
-The public team address is `https://liowyijia.github.io/gutbrains-holidays/`. GitHub Pages serves `docs/` from the `main` branch of `liowyijia/gutbrains-holidays`; `npm run build:github` rebuilds those assets. The existing Sites deployment continues to provide the shared API and D1 database, so no additional hosting account is needed. GitHub receives code and public interface assets, never the stored responses or edit tokens.
+The public team address is `https://yijialiow.com/gutbrains-holidays/`. The GitHub account already uses this personal domain, so `https://liowyijia.github.io/gutbrains-holidays/` redirects there without any new domain or DNS setup. GitHub Pages serves `docs/` from the `main` branch of `liowyijia/gutbrains-holidays`; `npm run build:github` rebuilds those assets. The existing Sites deployment continues to provide the shared API and D1 database, so no additional hosting account is needed. GitHub receives code and public interface assets, never the stored responses or edit tokens.
 
 The client accepts separate API and asset bases so share links and the favicon work under the GitHub project path. The backend explicitly permits the GitHub account's origin for browser API access. Private edit-token checks, revision checks, and the stored response data are preserved. The optional `destinationUrl` property forwards old-site visitors to GitHub with their existing edit capability in the URL fragment.
 

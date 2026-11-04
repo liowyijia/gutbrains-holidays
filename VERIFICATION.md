@@ -43,3 +43,5 @@ Re-run the local API checks with a running development server using `python3 scr
 - Used the normal Vite preview for the local API tests because Wrangler's built-preview proxy restarted during writes. No production data was used in tests.
 - The same calendar component is used for the original Site and GitHub Pages, retaining the Sunday-first layout, Helvetica, blue hexagon, and CSV export.
 - Browser visual and interaction QA remains unavailable in this session.
+- GitHub Pages inherits the account's existing `yijialiow.com` domain. Verified HTTPS HTTP 200 at the new project path and GitHub's redirect from `liowyijia.github.io`.
+- Permitted both observed account origins for API access. The original Site forwards visitors and their stored edit identity to the personal-domain project path.

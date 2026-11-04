@@ -2,7 +2,9 @@
 
 Team holiday calendar for the Laboratory of Gut-Brain Neurobiology, Duke University.
 
-**Live site:** https://liowyijia.github.io/gutbrains-holidays/
+**Live site:** https://yijialiow.com/gutbrains-holidays/
+
+GitHub Pages uses the personal domain already configured on this GitHub account. `https://liowyijia.github.io/gutbrains-holidays/` redirects to the same page. No domain purchase or DNS change is needed for this project.
 
 The calendar uses Sunday-first month grids, Helvetica, and the lab's blue hexagon symbol. Team members can save days away without signing in, update their own responses using private edit links, and export the shared schedule as CSV.
 
@@ -21,7 +23,7 @@ Commit and push the source changes and updated `docs/` files. No custom domain o
 
 The GitHub page uses the calendar's existing hosted API for shared responses. GitHub Pages hosts the interface; it does not run the database. Responses and private edit tokens are never committed to this repository.
 
-The API permits browser requests from `https://liowyijia.github.io` and still requires a private edit token for updates. The old site can forward visitors and their stored edit access to the GitHub address.
+The API permits browser requests from `https://liowyijia.github.io` and `https://yijialiow.com` and still requires a private edit token for updates. The old site forwards visitors and their stored edit access to the new address.
 
 ## Source
 
