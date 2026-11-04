@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DAYS, START, END, readable, ranges, weekend, type EditIdentity, type TeamResponse } from "@/lib/calendar";
-import { identityFromFragment, privateEditLink, validIdentity } from "@/lib/edit-access";
+import { DAYS, START, END, readable, ranges, weekend, type TeamResponse } from "@/lib/calendar";
+import { profileFromFragment, validIdentity, validProfileId } from "@/lib/edit-access";
 
-const STORAGE_KEY = "days-away-edit-v1";
+const STORAGE_KEY = "days-away-profile-v1";
+const LEGACY_STORAGE_KEY = "days-away-edit-v1";
 const MONTHS = [
   { year: 2026, month: 10, label: "November", foot: "26 / Thanksgiving" },
   { year: 2026, month: 11, label: "December", foot: "25 / Christmas Day" },
@@ -16,18 +17,17 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   const [team, setTeam] = useState<TeamResponse[]>([]);
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [identity, setIdentity] = useState<EditIdentity | null>(null);
   const [saved, setSaved] = useState<TeamResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
-  const [showRecovery, setShowRecovery] = useState(false);
   const [origin, setOrigin] = useState("");
   const dragMode = useRef<boolean | null>(null);
   const mouseHandled = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
+  const rememberedProfile = useRef<string | null>(null);
   const sortedDays = [...selected].sort();
   const scheduledTeam = team.filter(row => row.days.length > 0);
   const dirty = !!saved && (name.trim() !== saved.name || JSON.stringify(sortedDays) !== JSON.stringify(saved.days));
@@ -48,35 +48,34 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
 
   useEffect(() => {
     let active = true;
-    let currentIdentity: EditIdentity | null = null;
+    let currentProfile: string | null = null;
     setOrigin(window.location.origin + siteBase.replace(/\/$/, ""));
     try {
-      const fragment = new URLSearchParams(window.location.hash.slice(1));
-      const edit = fragment.get("edit");
-      if (edit) {
-        const value = identityFromFragment(window.location.hash);
-        if (value) {
-          currentIdentity = value;
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); } catch { setShowRecovery(true); }
-        } else setError("This edit link is invalid. Check that you copied the complete link.");
+      if (window.location.hash) {
+        currentProfile = profileFromFragment(window.location.hash);
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      } else {
-        const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-        if (validIdentity(value)) currentIdentity = value;
       }
-    } catch { /* Storage is optional; private edit links also work without it. */ }
+      if (!currentProfile) {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (validProfileId(stored)) currentProfile = stored;
+        else {
+          const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "null");
+          if (validIdentity(legacy)) currentProfile = legacy.id;
+        }
+      }
+      if (currentProfile) localStorage.setItem(STORAGE_KEY, currentProfile);
+    } catch { /* Profiles also work when browser storage is unavailable. */ }
+    rememberedProfile.current = currentProfile;
     if (destinationUrl) {
       const destination = new URL(destinationUrl);
-      if (currentIdentity) destination.hash = `edit=${currentIdentity.id}.${currentIdentity.token}`;
+      if (currentProfile) destination.hash = `profile=${currentProfile}`;
       window.location.replace(destination.href);
       return () => { active = false; };
     }
-    setIdentity(currentIdentity);
     refresh().then(rows => {
       if (!active) return;
-      const mine = rows.find(row => row.id === currentIdentity?.id);
+      const mine = rows.find(row => row.id === currentProfile);
       if (mine) useResponse(mine);
-      else if (currentIdentity) { setIdentity(null); setError("Your saved response could not be found. You can submit a new schedule."); }
     }).catch(err => { if (active) setLoadError(err.message); }).finally(() => { if (active) setLoading(false); });
     const interval = window.setInterval(() => { refresh().catch(err => { if (active) setLoadError(err.message); }); }, 30000);
     const stopDrag = () => { dragMode.current = null; };
@@ -114,17 +113,14 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
     setSaving(true); setError("");
     try {
       const result = await fetch(`${apiBase}/api/responses`, {
-        method: identity && saved ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json", ...(identity ? { Authorization: `Bearer ${identity.token}` } : {}) },
-        body: JSON.stringify({ name, days: sortedDays, ...(identity && saved ? { id: identity.id, revision: saved.revision } : {}) }),
+        method: saved ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, days: sortedDays, ...(saved ? { id: saved.id, revision: saved.revision } : {}) }),
       });
-      const data = await result.json() as { response?: TeamResponse; token?: string; error?: string };
+      const data = await result.json() as { response?: TeamResponse; error?: string };
       if (!result.ok || !data.response) throw new Error(data.error || "Your schedule could not be saved.");
       const response = data.response;
-      const nextIdentity = data.token ? { id: response.id, token: data.token } : identity;
-      setIdentity(nextIdentity);
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nextIdentity)); }
-      catch { setShowRecovery(true); }
+      rememberProfile(response.id);
       useResponse(response);
       setTeam(previous => [...previous.filter(row => row.id !== response.id), response].sort((a, b) => a.name.localeCompare(b.name)));
       setToast("Schedule saved.");
@@ -142,15 +138,37 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
     }
   }
 
-  async function copyEditLink() {
-    if (!identity) return;
+  function rememberProfile(id: string | null) {
+    rememberedProfile.current = id;
     try {
-      await navigator.clipboard.writeText(privateEditLink(origin + "/", identity));
-      setToast("Private edit link copied. Open it on your other device. Keep it private.");
-    } catch {
-      setShowRecovery(true);
-      setToast("Open the private edit link below and bookmark it for your other device.");
+      if (id) localStorage.setItem(STORAGE_KEY, id);
+      else localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch { /* Selecting a profile does not depend on local storage. */ }
+  }
+
+  async function openProfile(id: string, scroll = false) {
+    if (loading || saving || id === saved?.id) {
+      if (scroll) document.getElementById("your-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
     }
+    if ((dirty || (!saved && (name.trim() || selected.size))) && !window.confirm("Discard your unsaved changes?")) return;
+    setError("");
+    if (!id) {
+      setSaved(null); setName(""); setSelected(new Set()); rememberProfile(null);
+      nameInput.current?.focus();
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await refresh();
+      const row = rows.find(row => row.id === id);
+      if (!row) throw new Error("This profile could not be found. Reload the calendar.");
+      useResponse(row);
+      rememberProfile(row.id);
+      if (scroll) document.getElementById("your-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) { setError(err instanceof Error ? err.message : "Your profile could not load."); }
+    finally { setLoading(false); }
   }
 
   function download() {
@@ -163,7 +181,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   async function reloadSaved() {
     try {
       const rows = await refresh();
-      const mine = rows.find(row => row.id === identity?.id);
+      const mine = rows.find(row => row.id === saved?.id);
       if (mine) { useResponse(mine); setToast("Your saved schedule has been reloaded."); }
     } catch (err) { setLoadError(err instanceof Error ? err.message : "Please try again."); }
   }
@@ -171,7 +189,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   async function retryLoad() {
     try {
       const rows = await refresh();
-      const mine = rows.find(row => row.id === identity?.id);
+      const mine = rows.find(row => row.id === (saved?.id ?? rememberedProfile.current));
       if (mine && !saved) useResponse(mine);
     } catch (err) { setLoadError(err instanceof Error ? err.message : "Please try again."); }
   }
@@ -189,7 +207,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       <section className="instructions" aria-labelledby="instructions-title">
         <h2 className="micro" id="instructions-title">Instructions</h2>
         <ol role="list">
-          <li>Enter your name</li>
+          <li>Enter your name or select your profile</li>
           <li>Click on the days when you are away</li>
           <li>Save changes</li>
         </ol>
@@ -199,6 +217,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       <section className="workspace" aria-labelledby="your-dates">
         <div className="editor">
           <div className="section-heading"><span className="micro">01 /</span><h2 id="your-dates">Your Days Away</h2></div>
+          {team.length > 0 && <div className="profile-row"><label htmlFor="profile" className="micro">Your profile</label><select id="profile" value={saved?.id || ""} onChange={event => { void openProfile(event.target.value); }} disabled={loading || saving}><option value="">New profile</option>{team.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div>}
           <div className="name-row"><label htmlFor="name" className="micro">Your name</label><input ref={nameInput} id="name" autoComplete="name" placeholder="First and last name" value={name} onChange={event => setName(event.target.value)} maxLength={60} disabled={loading || saving}/></div>
           <div className="calendar-help"><p>Click days to select. Click again to undo.</p><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your selection</span></div>
           <div className="months">
@@ -230,20 +249,19 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
           <h3 className="micro" id="plan-label">Selected dates</h3>
           <p className="plan-count" aria-live="polite">{String(selected.size).padStart(2, "0")}</p>
           <p className="plan-count-label">{selected.size === 1 ? "day" : "days"} away</p>
-          <div className="plan-date-list">{selected.size ? ranges(sortedDays).map(range => <p key={range}>{range}</p>) : <p className="empty-note">No days away. Saving removes your name from Team Schedule.</p>}</div>
+          <div className="plan-date-list">{ranges(sortedDays).map(range => <p key={range}>{range}</p>)}</div>
           <button className="primary" onClick={save} disabled={!canSave}><span>{saving ? "Saving…" : saved && !dirty ? "Schedule saved" : "Save changes"}</span><span aria-hidden="true">{saved && !dirty ? "✓" : "↗"}</span></button>
-          {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p><div className="edit-actions">{dirty && <button className="subtle-button" onClick={reloadSaved}>Discard changes</button>}{identity && <button className="subtle-button" onClick={copyEditLink}>Edit on another device ↗</button>}</div></>}
-          {showRecovery && identity && <a className="recovery" href={privateEditLink(origin + "/", identity)} target="_blank" rel="noreferrer">Open your private edit link and bookmark it ↗</a>}
+          {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p>{dirty && <div className="edit-actions"><button className="subtle-button" onClick={reloadSaved}>Discard changes</button></div>}</>}
         </aside>
         <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
       </section>
       <section className="team" aria-labelledby="team-label">
-        <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta"><span className="micro">{loading ? "Loading…" : `${String(scheduledTeam.length).padStart(2, "0")} ${scheduledTeam.length === 1 ? "response" : "responses"}`}</span>{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
+        <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
         {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules">
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span><span className="month-label" style={{ gridColumn: "2 / span 8" }} role="columnheader">NOV / 2026</span><span className="month-label" style={{ gridColumn: "10 / span 31" }} role="columnheader">DEC / 2026</span><span className="month-label" style={{ gridColumn: "41 / span 10" }} role="columnheader">JAN / 2027</span></div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
-          {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === identity?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${row.days.length ? ranges(row.days).join(", ") : "No days away"}`}><strong>{row.name}{row.id === identity?.id ? " (you)" : ""}</strong><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
-        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No days away saved."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved days away appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
+          {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === saved?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${ranges(row.days).join(", ")}`}><button className="profile-name" onClick={() => { void openProfile(row.id, true); }} disabled={loading || saving} aria-label={`Edit ${row.name}’s dates`}>{row.name}{row.id === saved?.id ? " (you)" : ""}</button><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
+        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
         <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span></div><p className="tiny"><span className="live-dot" aria-hidden="true"/>{loadError ? "Updates paused · Retry above" : "Shared calendar · Refreshes every 30 seconds"}</p></div>
       </section>
     </main>

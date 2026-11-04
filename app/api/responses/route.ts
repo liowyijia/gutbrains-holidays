@@ -4,16 +4,12 @@ import { DAYS, type TeamResponse } from "@/lib/calendar";
 export const dynamic = "force-dynamic";
 const daySet = new Set(DAYS);
 const externalOrigins = new Set(["https://liowyijia.github.io", "https://yijialiow.com"]);
-type Stored = { id: string; name: string; days: string; revision: number; updated_at: string; edit_token_hash: string };
+type Stored = { id: string; name: string; days: string; revision: number; updated_at: string };
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 function publicRow(row: Stored): TeamResponse {
   return { id: row.id, name: row.name, days: JSON.parse(row.days), revision: row.revision, updatedAt: row.updated_at };
-}
-async function hash(token: string) {
-  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
 }
 function validate(input: unknown): { name: string; nameKey: string; days: string[] } | null {
   if (!input || typeof input !== "object") return null;
@@ -47,15 +43,16 @@ async function createResponse(request: Request) {
   const input = validate(await body(request));
   if (!input) return json({ error: "Enter a name (2–60 characters) and select dates within the holiday period." }, 400);
   const id = crypto.randomUUID();
-  const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
   const updatedAt = new Date().toISOString();
   try {
-    const result = await env.DB!.prepare("INSERT INTO responses (id, name, name_key, edit_token_hash, days, revision, updated_at) SELECT ?, ?, ?, ?, ?, 1, ? WHERE (SELECT COUNT(*) FROM responses) < 200")
-      .bind(id, input.name, input.nameKey, await hash(token), JSON.stringify(input.days), updatedAt).run();
+    // The legacy token column remains for schema compatibility. Profiles now
+    // deliberately use the calendar's shared, name-only editing model.
+    const result = await env.DB!.prepare("INSERT INTO responses (id, name, name_key, edit_token_hash, days, revision, updated_at) SELECT ?, ?, ?, '', ?, 1, ? WHERE (SELECT COUNT(*) FROM responses) < 200")
+      .bind(id, input.name, input.nameKey, JSON.stringify(input.days), updatedAt).run();
     if (!result.meta.changes) return json({ error: "This calendar has reached its response limit." }, 409);
-    return json({ response: { id, name: input.name, days: input.days, revision: 1, updatedAt }, token }, 201);
+    return json({ response: { id, name: input.name, days: input.days, revision: 1, updatedAt } }, 201);
   } catch (error) {
-    if (String(error).includes("UNIQUE")) return json({ error: "That name already has a response. Use your private edit link, or add an initial if you share the same name." }, 409);
+    if (String(error).includes("UNIQUE")) return json({ error: "That name already has a profile. Select it under Your profile to edit its dates, or add an initial if you share the same name." }, 409);
     console.error("Calendar save failed", error);
     return json({ error: "Your schedule could not be saved. Please try again." }, 503);
   }
@@ -65,11 +62,9 @@ async function updateResponse(request: Request) {
   const raw = await body(request);
   const input = validate(raw);
   if (!input || typeof raw.id !== "string" || !Number.isInteger(raw.revision)) return json({ error: "The schedule is invalid. Reload the calendar and try again." }, 400);
-  const token = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
-  if (!/^[a-f0-9]{64}$/.test(token)) return json({ error: "Use your private edit link to update this response." }, 403);
   try {
-    const existing = await env.DB!.prepare("SELECT * FROM responses WHERE id = ?").bind(raw.id).first<Stored>();
-    if (!existing || existing.edit_token_hash !== await hash(token)) return json({ error: "This edit link is invalid." }, 403);
+    const existing = await env.DB!.prepare("SELECT id FROM responses WHERE id = ?").bind(raw.id).first<{ id: string }>();
+    if (!existing) return json({ error: "This profile could not be found. Reload the calendar." }, 404);
     const updatedAt = new Date().toISOString();
     const result = await env.DB!.prepare("UPDATE responses SET name = ?, name_key = ?, days = ?, revision = revision + 1, updated_at = ? WHERE id = ? AND revision = ?")
       .bind(input.name, input.nameKey, JSON.stringify(input.days), updatedAt, raw.id, raw.revision).run();

@@ -63,3 +63,13 @@ Re-run the local API checks with a running development server using `python3 scr
 - Local API checks passed for clearing all dates, reading the persisted empty response, and adding dates again with the original token from the other allowed origin, along with the existing authorization and revision checks. Local test data was removed.
 - GitHub static build, Sites build, and TypeScript check passed. Browser visual/interaction QA remains unavailable.
 - No production responses were changed, and no owner-wide deletion control was added in this revision.
+
+## Name-only returning profiles — November 4, 2026
+
+- The owner explicitly selected name-only editing after being told that anyone with the calendar link can edit any listed profile. Server updates now deliberately use profile ID and current revision without private credentials.
+- Added a native “Your profile” selector containing all profiles, including members with zero selected dates. Clicking a name in Team Schedule also opens its dates for editing. Changing profiles fetches fresh data; unsaved changes receive a discard prompt. Browser storage remembers only the selected profile.
+- Existing profile IDs and dates are reused; no data migration or production data edits were performed. Legacy browser identities and old private links continue to open the corresponding profile.
+- Removed both empty-selection explanations, the private-link action, and the Team Schedule response count. CSV export remains and excludes empty schedules.
+- Local API tests passed for fresh-browser name-only edits, preexisting token-hash rows, clear/restore, stale-revision conflicts, normalized duplicate names, missing profiles, date validation, CORS and invalid-origin rejection. Test rows were removed from local D1.
+- Profile restoration and legacy-link parsing tests passed. TypeScript, GitHub build, and Sites production build passed.
+- Browser visual/interaction QA remains unavailable: computer-use inventory reported no browser surfaces.
