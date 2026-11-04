@@ -10,7 +10,7 @@ The client accepts separate API and asset bases so share links and the favicon w
 
 ## Prototype scope
 
-- November 23, 2026 through January 10, 2027, inclusive; all dates represent whole calendar days, including weekends.
+- November 15, 2026 through January 10, 2027, inclusive; all dates represent whole calendar days, including weekends.
 - Month grids start on Sunday. Changing the weekday order does not shift the stored date values or the seasonal date range.
 - Name-based responses; no sign-in. A public calendar link shows everyone's saved schedules.
 - Members select an existing name under “Your profile” or click a name in Team Schedule to load its saved dates. Name-only editing works from any browser, without an account, PIN, browser credential, or private link. Anyone with the calendar link can edit any profile; this trusted shared-poll behavior was explicitly chosen by the owner.

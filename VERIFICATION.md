@@ -73,3 +73,10 @@ Re-run the local API checks with a running development server using `python3 scr
 - Local API tests passed for fresh-browser name-only edits, preexisting token-hash rows, clear/restore, stale-revision conflicts, normalized duplicate names, missing profiles, date validation, CORS and invalid-origin rejection. Test rows were removed from local D1.
 - Profile restoration and legacy-link parsing tests passed. TypeScript, GitHub build, and Sites production build passed.
 - Browser visual/interaction QA remains unavailable: computer-use inventory reported no browser surfaces.
+
+## Open November 16 week — November 4, 2026
+
+- Expanded the start to Sunday, November 15, 2026, retaining January 10, 2027 as the end. The calendar now has 57 selectable days, including the week of November 16.
+- Date count, API selection limit, timeline columns and month spans derive from the date range. November has 16 columns, December 31, and January 10; CSV uses the same dates.
+- TypeScript, GitHub build and Sites production build passed. Local API tests saved the newly opened November 15/16/22 dates and all 57 days, while rejecting November 14. Existing editing and revision checks passed; test profiles were cleaned up.
+- No saved production dates were changed. Browser visual QA remains unavailable.

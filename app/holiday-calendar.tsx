@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { DAYS, START, END, readable, ranges, weekend, type TeamResponse } from "@/lib/calendar";
 import { profileFromFragment, validIdentity, validProfileId } from "@/lib/edit-access";
 
@@ -11,6 +11,11 @@ const MONTHS = [
   { year: 2026, month: 11, label: "December", foot: "25 / Christmas Day" },
   { year: 2027, month: 0, label: "January", foot: "01 / New Year’s Day" },
 ];
+const TIMELINE_MONTHS = MONTHS.map(month => {
+  const prefix = `${month.year}-${String(month.month + 1).padStart(2, "0")}`;
+  const days = DAYS.filter(day => day.startsWith(prefix));
+  return { ...month, count: days.length, columnStart: DAYS.indexOf(days[0]) + 2 };
+}).filter(month => month.count > 0);
 const HOLIDAYS: Record<string, string> = { "2026-11-26": "Thanksgiving", "2026-12-25": "Christmas Day", "2027-01-01": "New Year’s Day" };
 
 export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinationUrl }: { apiBase?: string; siteBase?: string; destinationUrl?: string } = {}) {
@@ -257,8 +262,8 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       </section>
       <section className="team" aria-labelledby="team-label">
         <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
-        {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules">
-          <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span><span className="month-label" style={{ gridColumn: "2 / span 8" }} role="columnheader">NOV / 2026</span><span className="month-label" style={{ gridColumn: "10 / span 31" }} role="columnheader">DEC / 2026</span><span className="month-label" style={{ gridColumn: "41 / span 10" }} role="columnheader">JAN / 2027</span></div>
+        {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
+          <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span>{TIMELINE_MONTHS.map(month => <span key={month.label} className="month-label" style={{ gridColumn: `${month.columnStart} / span ${month.count}` }} role="columnheader">{month.label.slice(0, 3).toUpperCase()} / {month.year}</span>)}</div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
           {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === saved?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${ranges(row.days).join(", ")}`}><button className="profile-name" onClick={() => { void openProfile(row.id, true); }} disabled={loading || saving} aria-label={`Edit ${row.name}’s dates`}>{row.name}{row.id === saved?.id ? " (you)" : ""}</button><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
         </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}

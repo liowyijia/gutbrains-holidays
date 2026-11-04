@@ -1,9 +1,10 @@
-export const START = "2026-11-23";
+export const START = "2026-11-15";
 export const END = "2027-01-10";
 export type TeamResponse = { id: string; name: string; days: string[]; revision: number; updatedAt: string };
 export type EditIdentity = { id: string; token: string };
 
-export const DAYS = Array.from({ length: 49 }, (_, n) => {
+const dayCount = Math.round((Date.parse(END + "T12:00:00Z") - Date.parse(START + "T12:00:00Z")) / 86400000) + 1;
+export const DAYS = Array.from({ length: dayCount }, (_, n) => {
   const date = new Date(START + "T12:00:00Z");
   date.setUTCDate(date.getUTCDate() + n);
   return date.toISOString().slice(0, 10);

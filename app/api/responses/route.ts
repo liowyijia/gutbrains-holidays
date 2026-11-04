@@ -16,7 +16,7 @@ function validate(input: unknown): { name: string; nameKey: string; days: string
   const { name, days } = input as Record<string, unknown>;
   if (typeof name !== "string" || /[\p{C}]/u.test(name)) return null;
   const cleanName = name.trim().replace(/\s+/g, " ").normalize("NFKC");
-  if (cleanName.length < 2 || cleanName.length > 60 || !Array.isArray(days) || days.length > 49 || days.some(d => typeof d !== "string" || !daySet.has(d))) return null;
+  if (cleanName.length < 2 || cleanName.length > 60 || !Array.isArray(days) || days.length > DAYS.length || days.some(d => typeof d !== "string" || !daySet.has(d))) return null;
   return { name: cleanName, nameKey: cleanName.toLocaleLowerCase("en-US"), days: [...new Set(days)].sort() };
 }
 async function body(request: Request) {

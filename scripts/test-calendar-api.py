@@ -1,4 +1,5 @@
 """Exercise name-only profile editing against a disposable local D1 database."""
+import datetime
 import glob
 import json
 import os
@@ -54,14 +55,14 @@ try:
     status, initial = request()
     assert status == 200 and isinstance(initial["responses"], list)
     assert all("token" not in r and "edit_token_hash" not in r for r in initial["responses"])
-    status, _ = request("POST", {"name": name, "days": ["2026-11-22"]})
+    status, _ = request("POST", {"name": name, "days": ["2026-11-14"]})
     assert status == 400, "Out-of-season dates must be rejected"
     status, _ = request("POST", {"name": name, "days": ["2026-11-26"]}, origin="https://example.com")
     assert status == 403, "Unapproved-origin writes must be rejected"
-    status, created = request("POST", {"name": name, "days": ["2026-12-25", "2026-11-26", "2026-11-26"]}, origin=PERSONAL_ORIGIN)
+    status, created = request("POST", {"name": name, "days": ["2026-12-25", "2026-11-16", "2026-11-15", "2026-11-22", "2026-11-26", "2026-11-26"]}, origin=PERSONAL_ORIGIN)
     assert status == 201, created.get("error")
     created_id = created["response"]["id"]
-    assert created["response"]["days"] == ["2026-11-26", "2026-12-25"]
+    assert created["response"]["days"] == ["2026-11-15", "2026-11-16", "2026-11-22", "2026-11-26", "2026-12-25"]
     assert "token" not in created, "The shared poll must not issue unnecessary private credentials"
     status, duplicate = request("POST", {"name": "  " + name.upper() + "  ", "days": []})
     assert status == 409, "Duplicate names must lead to the existing profile instead of overwriting it"
@@ -81,10 +82,12 @@ try:
     mine = next(r for r in shared["responses"] if r["id"] == created_id)
     assert mine["days"] == [] and mine["revision"] == 2, "Empty profiles must remain selectable for future edits"
     assert "token" not in mine and "edit_token_hash" not in mine
-    restore = {"id": mine["id"], "name": name, "days": ["2027-01-04"], "revision": mine["revision"]}
+    restore = {"id": mine["id"], "name": name, "days": [(datetime.date(2026, 11, 15) + datetime.timedelta(days=i)).isoformat() for i in range(57)], "revision": mine["revision"]}
     status, restored = request("PUT", restore, origin=PERSONAL_ORIGIN)
     assert status == 200 and restored["response"]["revision"] == 3
-    assert restored["response"]["days"] == ["2027-01-04"]
+    assert len(restored["response"]["days"]) == 57
+    assert restored["response"]["days"][0] == "2026-11-15"
+    assert restored["response"]["days"][-1] == "2027-01-10"
 
     # Existing production-style rows keep their old token hash but need no
     # credential reset or database migration to join the name-only poll.
