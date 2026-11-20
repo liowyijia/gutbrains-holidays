@@ -170,7 +170,6 @@ export default function Responsibilities({ apiBase, team, profile, profileReady,
         })}</div>)}
       </div>
     </div>
-    <div className="calendar-footnote"><p>Responsibilities show the member’s name. Days away have a dashed border.</p><p>Shared calendar · Refreshes every 30 seconds</p></div>
     <dialog ref={dialog} className="task-dialog" aria-labelledby="task-dialog-title" onCancel={event => { event.preventDefault(); closeDialog(); }} onClick={event => { if (event.target === dialog.current) closeDialog(); }}>
       <div className="task-dialog-heading"><h3 id="task-dialog-title">{dialogMode === "day" ? fullDate(agendaDay) : editing ? "Responsibility" : "Add responsibility"}</h3><button type="button" className="dialog-close" aria-label="Close task dialog" disabled={busy} onClick={closeDialog}>×</button></div>
       {dialogMode === "day" ? <div className="day-agenda"><div className="agenda-entries">{tasksOn(agendaDay).map(task => <button type="button" key={task.id} className={`calendar-event event-${ownerColor(task.profileId)}`} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } edit(task); }}><strong>{task.title}</strong><span>{memberName(task.profileId)}</span></button>)}{awayOn(agendaDay).map(person => <p className="calendar-away" key={person.id}>{person.name} · Away</p>)}</div><button className="primary" type="button" onClick={() => openNew(agendaDay)}>Add responsibility</button></div> : <form id="responsibility-form" className="calendar-task-form" onSubmit={submit}>
