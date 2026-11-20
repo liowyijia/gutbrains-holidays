@@ -156,9 +156,15 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
     } catch { /* Selecting a profile does not depend on local storage. */ }
   }
 
+  function scrollToDates() {
+    const details = document.getElementById("away-settings") as HTMLDetailsElement | null;
+    if (details) details.open = true;
+    document.getElementById("your-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function openProfile(id: string, scroll = false) {
     if (loading || saving || responsibilityBusy || id === saved?.id) {
-      if (scroll) document.getElementById("your-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (scroll) scrollToDates();
       return;
     }
     if ((responsibilityDirty || dirty || (!saved && (name.trim() || selected.size))) && !window.confirm("Discard your unsaved changes?")) return;
@@ -175,7 +181,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       if (!row) throw new Error("This profile could not be found. Reload the calendar.");
       useResponse(row);
       rememberProfile(row.id);
-      if (scroll) document.getElementById("your-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (scroll) scrollToDates();
     } catch (err) { setError(err instanceof Error ? err.message : "Your profile could not load."); }
     finally { setLoading(false); }
   }
@@ -204,7 +210,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   }
 
   return <div className="shell">
-    <a className="skip-link" href="#your-dates">Skip to calendar</a>
+    <a className="skip-link" href="#lab-calendar">Skip to calendar</a>
     <header className="masthead">
       <div className="wordmark"><img className="lab-symbol" src={`${siteBase}favicon.svg?v=3`} alt="" width={40} height={40}/><div className="lab-identity"><span className="lab-name">Laboratory of Gut-Brain Neurobiology</span><span className="lab-affiliation">Duke University</span></div></div>
       <div className="masthead-right"><button className="text-button" onClick={() => copyLink()}>Share calendar <span aria-hidden="true">↗</span></button></div>
@@ -216,18 +222,24 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       <section className="instructions" aria-labelledby="instructions-title">
         <h2 className="micro" id="instructions-title">Instructions</h2>
         <ol role="list">
-          <li>Enter your name or select your profile</li>
-          <li>Click on the days when you are away</li>
-          <li>Save changes, then add your lab responsibilities below</li>
+          <li>Select your profile, or enter your name and save a new profile</li>
+          <li>Click a calendar day to add a task; drag across days for a range</li>
+          <li>Click a task to see its details or edit your responsibilities</li>
         </ol>
       </section>
       {loadError && <div className="notice error" role="alert">{loadError}<button className="subtle-button" onClick={retryLoad}>Retry</button></div>}
       {error && <div className="notice error" role="alert">{error}{saved && <button className="subtle-button" onClick={reloadSaved}>Reload saved schedule</button>}</div>}
-      <section className="workspace" aria-labelledby="your-dates">
-        <div className="editor">
-          <div className="section-heading"><span className="micro">01 /</span><h2 id="your-dates">Your Days Away</h2></div>
+      <section className="profile-settings" id="profile-settings" aria-label="Your calendar profile">
           {team.length > 0 && <div className="profile-row"><label htmlFor="profile" className="micro">Your profile</label><select id="profile" value={saved?.id || ""} onChange={event => { void openProfile(event.target.value); }} disabled={loading || saving || responsibilityBusy}><option value="">New profile</option>{team.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div>}
           <div className="name-row"><label htmlFor="name" className="micro">Your name</label><input ref={nameInput} id="name" autoComplete="name" placeholder="First and last name" value={name} onChange={event => setName(event.target.value)} maxLength={60} disabled={loading || saving || responsibilityBusy}/></div>
+        {(!saved || name.trim() !== saved.name) && <button className="primary profile-save" type="button" onClick={save} disabled={!canSave || responsibilityBusy}>{saving ? "Saving…" : saved ? "Save name" : "Save profile"}</button>}
+        <p className="profile-hint">{saved ? `Adding responsibilities as ${saved.name}.` : "Save your profile to add responsibilities. You can leave days away blank."}</p>
+      </section>
+      <Responsibilities apiBase={apiBase} team={team} profile={saved} profileReady={!dirty && !loading && !saving} onChange={setResponsibilities} onDraftChange={setResponsibilityDirty} onBusyChange={setResponsibilityBusy}/>
+      <details className="calendar-secondary" id="away-settings"><summary>Your days away<span>{saved ? `${saved.days.length} saved days` : "Mark or update your holiday dates"}</span></summary>
+      <section className="workspace" aria-labelledby="your-dates">
+        <div className="editor">
+          <div className="section-heading"><h2 id="your-dates">Mark Your Days Away</h2></div>
           <div className="calendar-help"><p>Click days to select. Click again to undo.</p><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your selection</span></div>
           <div className="months">
             {MONTHS.map(({ year, month, label, foot }) => {
@@ -264,9 +276,10 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         </aside>
         <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
       </section>
-      <Responsibilities apiBase={apiBase} team={team} profile={saved} profileReady={!dirty && !loading && !saving} onChange={setResponsibilities} onDraftChange={setResponsibilityDirty} onBusyChange={setResponsibilityBusy}/>
+      </details>
+      <details className="calendar-secondary"><summary>Season overview<span>Full team timeline and export</span></summary>
       <section className="team" aria-labelledby="team-label">
-        <div className="team-title"><div className="section-heading"><span className="micro">03 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export days away CSV</button>}</div></div>
+        <div className="team-title"><div className="section-heading"><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export days away CSV</button>}</div></div>
         {(scheduledTeam.length > 0 || responsibilities.length > 0) ? <div className="timeline-wrap" role="region" aria-label="Team days away and responsibilities; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules and responsibilities" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span>{TIMELINE_MONTHS.map(month => <span key={month.label} className="month-label" style={{ gridColumn: `${month.columnStart} / span ${month.count}` }} role="columnheader">{month.label.slice(0, 3).toUpperCase()} / {month.year}</span>)}</div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
@@ -278,6 +291,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules and responsibilities appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
         <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span><span className="legend"><i className="swatch responsibility-swatch" aria-hidden="true"/>Responsibility</span></div><p className="tiny"><span className="live-dot" aria-hidden="true"/>{loadError ? "Updates paused · Retry above" : "Shared calendar · Refreshes every 30 seconds"}</p></div>
       </section>
+      </details>
     </main>
     {toast && <div className="toast" role="status">{toast}</div>}
   </div>;
