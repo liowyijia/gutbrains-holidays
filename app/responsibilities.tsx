@@ -6,12 +6,12 @@ import { CALENDAR_MONTHS, inSeason, localDate, monthDays, ownerColor, selectionR
 
 type Props = {
   apiBase: string; team: TeamResponse[]; profile: TeamResponse | null; profileReady: boolean;
-  onChange: (rows: Responsibility[]) => void; onDraftChange: (dirty: boolean) => void; onBusyChange: (busy: boolean) => void;
+  onDraftChange: (dirty: boolean) => void; onBusyChange: (busy: boolean) => void;
 };
 const HOLIDAYS: Record<string, string> = { "2026-11-26": "Thanksgiving", "2026-12-25": "Christmas Day", "2027-01-01": "New Year’s Day" };
 const fullDate = (day: string) => readable(day, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
-export default function Responsibilities({ apiBase, team, profile, profileReady, onChange, onDraftChange, onBusyChange }: Props) {
+export default function Responsibilities({ apiBase, team, profile, profileReady, onDraftChange, onBusyChange }: Props) {
   const [rows, setRows] = useState<Responsibility[]>([]);
   const [editing, setEditing] = useState<Responsibility | null>(null);
   const [title, setTitle] = useState("");
@@ -58,8 +58,8 @@ export default function Responsibilities({ apiBase, team, profile, profileReady,
     const result = await fetch(`${apiBase}/api/responsibilities`, { cache: "no-store" });
     const data = await result.json() as { responsibilities?: Responsibility[]; error?: string };
     if (!result.ok || !Array.isArray(data.responsibilities)) throw new Error(data.error || "Responsibilities could not load.");
-    setRows(data.responsibilities); onChange(data.responsibilities); setLoadError("");
-  }, [apiBase, onChange]);
+    setRows(data.responsibilities); setLoadError("");
+  }, [apiBase]);
   useEffect(() => {
     let active = true;
     const load = () => refresh().catch(err => { if (active) setLoadError(err.message); }).finally(() => { if (active) setLoading(false); });
@@ -119,7 +119,7 @@ export default function Responsibilities({ apiBase, team, profile, profileReady,
       if (!result.ok || !data.responsibility) throw new Error(data.error || "The responsibility could not be saved.");
       const responsibility = data.responsibility;
       const next = [...rows.filter(row => row.id !== responsibility.id), responsibility].sort((a, b) => a.startDate.localeCompare(b.startDate) || a.title.localeCompare(b.title));
-      setRows(next); onChange(next); reset(); setDialogMode(null); if (filter && filter !== profile.id) setFilter(profile.id); setMonthIndex(CALENDAR_MONTHS.indexOf(responsibility.startDate.slice(0, 7))); setMessage("Responsibility saved and visible to the team.");
+      setRows(next); reset(); setDialogMode(null); if (filter && filter !== profile.id) setFilter(profile.id); setMonthIndex(CALENDAR_MONTHS.indexOf(responsibility.startDate.slice(0, 7))); setMessage("Responsibility saved and visible to the team.");
       await refresh().catch(err => setLoadError(err.message));
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); }
     finally { setBusy(false); }
@@ -134,7 +134,7 @@ export default function Responsibilities({ apiBase, team, profile, profileReady,
       const result = await fetch(`${apiBase}/api/responsibilities`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: row.id, profileId: row.profileId, revision: row.revision }) });
       const data = await result.json() as { error?: string };
       if (!result.ok) throw new Error(data.error || "The responsibility could not be removed.");
-      const next = rows.filter(item => item.id !== row.id); setRows(next); onChange(next);
+      const next = rows.filter(item => item.id !== row.id); setRows(next);
       reset(); setDialogMode(null); setMessage("Responsibility removed.");
       await refresh().catch(err => setLoadError(err.message));
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); }

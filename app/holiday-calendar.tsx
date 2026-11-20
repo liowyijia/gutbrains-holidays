@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { DAYS, START, END, readable, ranges, weekend, type TeamResponse, type Responsibility } from "@/lib/calendar";
+import { DAYS, START, END, readable, ranges, weekend, type TeamResponse } from "@/lib/calendar";
 import { profileFromFragment, validIdentity, validProfileId } from "@/lib/edit-access";
 import Responsibilities from "./responsibilities";
 
@@ -30,7 +30,6 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
   const [origin, setOrigin] = useState("");
-  const [responsibilities, setResponsibilities] = useState<Responsibility[]>([]);
   const [responsibilityDirty, setResponsibilityDirty] = useState(false);
   const [responsibilityBusy, setResponsibilityBusy] = useState(false);
   const dragMode = useRef<boolean | null>(null);
@@ -235,7 +234,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         {(!saved || name.trim() !== saved.name) && <button className="primary profile-save" type="button" onClick={save} disabled={!canSave || responsibilityBusy}>{saving ? "Saving…" : saved ? "Save name" : "Save profile"}</button>}
         {!saved && <p className="profile-hint">Save your profile to add responsibilities. You can leave days away blank.</p>}
       </section>
-      <Responsibilities apiBase={apiBase} team={team} profile={saved} profileReady={!dirty && !loading && !saving} onChange={setResponsibilities} onDraftChange={setResponsibilityDirty} onBusyChange={setResponsibilityBusy}/>
+      <Responsibilities apiBase={apiBase} team={team} profile={saved} profileReady={!dirty && !loading && !saving} onDraftChange={setResponsibilityDirty} onBusyChange={setResponsibilityBusy}/>
       <details className="calendar-secondary" id="away-settings"><summary>Your days away<span>{saved ? `${saved.days.length} saved days` : "Mark or update your holiday dates"}</span></summary>
       <section className="workspace" aria-labelledby="your-dates">
         <div className="editor">
@@ -277,19 +276,15 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
       </section>
       </details>
-      <details className="calendar-secondary"><summary>Season overview<span>Full team timeline and export</span></summary>
+      <details className="calendar-secondary"><summary>Season overview<span>Days away across the holiday season</span></summary>
       <section className="team" aria-labelledby="team-label">
-        <div className="team-title"><div className="section-heading"><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export days away CSV</button>}</div></div>
-        {(scheduledTeam.length > 0 || responsibilities.length > 0) ? <div className="timeline-wrap" role="region" aria-label="Team days away and responsibilities; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules and responsibilities" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
+        <div className="team-title"><div className="section-heading"><h2 id="team-label">Team Days Away</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export days away CSV</button>}</div></div>
+        {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span>{TIMELINE_MONTHS.map(month => <span key={month.label} className="month-label" style={{ gridColumn: `${month.columnStart} / span ${month.count}` }} role="columnheader">{month.label.slice(0, 3).toUpperCase()} / {month.year}</span>)}</div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
           {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === saved?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${ranges(row.days).join(", ")}`}><button className="profile-name" onClick={() => { void openProfile(row.id, true); }} disabled={loading || saving} aria-label={`Edit ${row.name}’s dates`}>{row.name}{row.id === saved?.id ? " (you)" : ""}</button><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
-          {responsibilities.map(task => {
-            const owner = team.find(person => person.id === task.profileId)?.name || "Team member";
-            return <div className="timeline-row task-row" role="row" key={`task-${task.id}`}><div className="task-label" role="rowheader"><strong title={task.title}>{task.title}</strong><span>{owner}</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${day >= task.startDate && day <= task.endDate ? "task-day" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${owner}, ${task.title}, ${readable(day)}: ${day >= task.startDate && day <= task.endDate ? "scheduled" : "not scheduled"}`} title={`${owner} · ${task.title} · ${readable(day)}${task.notes ? ` · ${task.notes}` : ""}`}/>)}</div>;
-          })}
-        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules and responsibilities appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
-        <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span><span className="legend"><i className="swatch responsibility-swatch" aria-hidden="true"/>Responsibility</span></div></div>
+        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved days away appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
+        <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span></div></div>
       </section>
       </details>
     </main>
