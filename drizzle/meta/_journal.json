@@ -8,6 +8,13 @@
       "when": 1793785112954,
       "tag": "0000_ambiguous_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795189162696,
+      "tag": "0001_narrow_spot",
+      "breakpoints": true
     }
   ]
 }

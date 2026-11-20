@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { DAYS, START, END, readable, ranges, weekend, type TeamResponse } from "@/lib/calendar";
+import { DAYS, START, END, readable, ranges, weekend, type TeamResponse, type Responsibility } from "@/lib/calendar";
 import { profileFromFragment, validIdentity, validProfileId } from "@/lib/edit-access";
+import Responsibilities from "./responsibilities";
 
 const STORAGE_KEY = "days-away-profile-v1";
 const LEGACY_STORAGE_KEY = "days-away-edit-v1";
@@ -29,6 +30,9 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
   const [origin, setOrigin] = useState("");
+  const [responsibilities, setResponsibilities] = useState<Responsibility[]>([]);
+  const [responsibilityDirty, setResponsibilityDirty] = useState(false);
+  const [responsibilityBusy, setResponsibilityBusy] = useState(false);
   const dragMode = useRef<boolean | null>(null);
   const mouseHandled = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
@@ -96,11 +100,11 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   }, [toast]);
 
   useEffect(() => {
-    if (!dirty && (!selected.size || saved)) return;
+    if (!responsibilityDirty && !dirty && (!selected.size || saved)) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, selected.size, saved]);
+  }, [dirty, selected.size, saved, responsibilityDirty]);
 
   function mark(day: string, value?: boolean) {
     if (saving || loading) return;
@@ -114,7 +118,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   }
 
   async function save() {
-    if (!canSave) { nameInput.current?.focus(); return; }
+    if (!canSave || responsibilityBusy) { nameInput.current?.focus(); return; }
     setSaving(true); setError("");
     try {
       const result = await fetch(`${apiBase}/api/responses`, {
@@ -153,11 +157,11 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
   }
 
   async function openProfile(id: string, scroll = false) {
-    if (loading || saving || id === saved?.id) {
+    if (loading || saving || responsibilityBusy || id === saved?.id) {
       if (scroll) document.getElementById("your-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if ((dirty || (!saved && (name.trim() || selected.size))) && !window.confirm("Discard your unsaved changes?")) return;
+    if ((responsibilityDirty || dirty || (!saved && (name.trim() || selected.size))) && !window.confirm("Discard your unsaved changes?")) return;
     setError("");
     if (!id) {
       setSaved(null); setName(""); setSelected(new Set()); rememberProfile(null);
@@ -214,7 +218,7 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         <ol role="list">
           <li>Enter your name or select your profile</li>
           <li>Click on the days when you are away</li>
-          <li>Save changes</li>
+          <li>Save changes, then add your lab responsibilities below</li>
         </ol>
       </section>
       {loadError && <div className="notice error" role="alert">{loadError}<button className="subtle-button" onClick={retryLoad}>Retry</button></div>}
@@ -222,8 +226,8 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
       <section className="workspace" aria-labelledby="your-dates">
         <div className="editor">
           <div className="section-heading"><span className="micro">01 /</span><h2 id="your-dates">Your Days Away</h2></div>
-          {team.length > 0 && <div className="profile-row"><label htmlFor="profile" className="micro">Your profile</label><select id="profile" value={saved?.id || ""} onChange={event => { void openProfile(event.target.value); }} disabled={loading || saving}><option value="">New profile</option>{team.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div>}
-          <div className="name-row"><label htmlFor="name" className="micro">Your name</label><input ref={nameInput} id="name" autoComplete="name" placeholder="First and last name" value={name} onChange={event => setName(event.target.value)} maxLength={60} disabled={loading || saving}/></div>
+          {team.length > 0 && <div className="profile-row"><label htmlFor="profile" className="micro">Your profile</label><select id="profile" value={saved?.id || ""} onChange={event => { void openProfile(event.target.value); }} disabled={loading || saving || responsibilityBusy}><option value="">New profile</option>{team.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div>}
+          <div className="name-row"><label htmlFor="name" className="micro">Your name</label><input ref={nameInput} id="name" autoComplete="name" placeholder="First and last name" value={name} onChange={event => setName(event.target.value)} maxLength={60} disabled={loading || saving || responsibilityBusy}/></div>
           <div className="calendar-help"><p>Click days to select. Click again to undo.</p><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your selection</span></div>
           <div className="months">
             {MONTHS.map(({ year, month, label, foot }) => {
@@ -255,19 +259,24 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
           <p className="plan-count" aria-live="polite">{String(selected.size).padStart(2, "0")}</p>
           <p className="plan-count-label">{selected.size === 1 ? "day" : "days"} away</p>
           <div className="plan-date-list">{ranges(sortedDays).map(range => <p key={range}>{range}</p>)}</div>
-          <button className="primary" onClick={save} disabled={!canSave}><span>{saving ? "Saving…" : saved && !dirty ? "Schedule saved" : "Save changes"}</span><span aria-hidden="true">{saved && !dirty ? "✓" : "↗"}</span></button>
+          <button className="primary" onClick={save} disabled={!canSave || responsibilityBusy}><span>{saving ? "Saving…" : saved && !dirty ? "Schedule saved" : "Save changes"}</span><span aria-hidden="true">{saved && !dirty ? "✓" : "↗"}</span></button>
           {saved && <><p className="saved-message">{dirty ? "Unsaved changes." : "Saved."}</p>{dirty && <div className="edit-actions"><button className="subtle-button" onClick={reloadSaved}>Discard changes</button></div>}</>}
         </aside>
         <p className="save-detail">Your saved dates are visible to anyone with the calendar link.</p>
       </section>
+      <Responsibilities apiBase={apiBase} team={team} profile={saved} profileReady={!dirty && !loading && !saving} onChange={setResponsibilities} onDraftChange={setResponsibilityDirty} onBusyChange={setResponsibilityBusy}/>
       <section className="team" aria-labelledby="team-label">
-        <div className="team-title"><div className="section-heading"><span className="micro">02 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export CSV ↗</button>}</div></div>
-        {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
+        <div className="team-title"><div className="section-heading"><span className="micro">03 /</span><h2 id="team-label">Team Schedule</h2></div><div className="team-meta">{scheduledTeam.length > 0 && <button className="subtle-button" onClick={download}>Export days away CSV</button>}</div></div>
+        {(scheduledTeam.length > 0 || responsibilities.length > 0) ? <div className="timeline-wrap" role="region" aria-label="Team days away and responsibilities; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules and responsibilities" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span>{TIMELINE_MONTHS.map(month => <span key={month.label} className="month-label" style={{ gridColumn: `${month.columnStart} / span ${month.count}` }} role="columnheader">{month.label.slice(0, 3).toUpperCase()} / {month.year}</span>)}</div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
           {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === saved?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${ranges(row.days).join(", ")}`}><button className="profile-name" onClick={() => { void openProfile(row.id, true); }} disabled={loading || saving} aria-label={`Edit ${row.name}’s dates`}>{row.name}{row.id === saved?.id ? " (you)" : ""}</button><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
-        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
-        <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span></div><p className="tiny"><span className="live-dot" aria-hidden="true"/>{loadError ? "Updates paused · Retry above" : "Shared calendar · Refreshes every 30 seconds"}</p></div>
+          {responsibilities.map(task => {
+            const owner = team.find(person => person.id === task.profileId)?.name || "Team member";
+            return <div className="timeline-row task-row" role="row" key={`task-${task.id}`}><div className="task-label" role="rowheader"><strong title={task.title}>{task.title}</strong><span>{owner}</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${day >= task.startDate && day <= task.endDate ? "task-day" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${owner}, ${task.title}, ${readable(day)}: ${day >= task.startDate && day <= task.endDate ? "scheduled" : "not scheduled"}`} title={`${owner} · ${task.title} · ${readable(day)}${task.notes ? ` · ${task.notes}` : ""}`}/>)}</div>;
+          })}
+        </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved schedules and responsibilities appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
+        <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span><span className="legend"><i className="swatch responsibility-swatch" aria-hidden="true"/>Responsibility</span></div><p className="tiny"><span className="live-dot" aria-hidden="true"/>{loadError ? "Updates paused · Retry above" : "Shared calendar · Refreshes every 30 seconds"}</p></div>
       </section>
     </main>
     {toast && <div className="toast" role="status">{toast}</div>}

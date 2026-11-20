@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Holiday Season 2026 / 2027 — Gut-Brain Neurobiology",
-  description: "Holiday schedule for the Laboratory of Gut-Brain Neurobiology, Duke University.",
+  description: "Shared holiday schedule and lab responsibilities for the Laboratory of Gut-Brain Neurobiology, Duke University.",
   icons: {
     icon: "/favicon.svg?v=3",
     shortcut: "/favicon.svg?v=3",

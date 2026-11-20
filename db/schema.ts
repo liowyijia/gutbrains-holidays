@@ -9,3 +9,14 @@ export const responses = sqliteTable("responses", {
   revision: integer("revision").notNull().default(1),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const responsibilities = sqliteTable("responsibilities", {
+  id: text("id").primaryKey(),
+  profileId: text("profile_id").references(() => responses.id),
+  title: text("title").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  notes: text("notes").notNull().default(""),
+  revision: integer("revision").notNull().default(1),
+  updatedAt: text("updated_at").notNull(),
+});
