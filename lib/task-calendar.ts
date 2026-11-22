@@ -28,10 +28,10 @@ export function inSeason(day: string) {
 // Assign the current team by stable profile ID so names and task counts cannot change colors.
 const TEAM_COLORS: Record<string, string> = {
   "71db31fc-669d-4830-9391-2005f604a9c8": "purple", // Naama: lilac
-  "f78c1ceb-814a-4582-811c-60733b07360c": "blue", // Zach
-  "3f24ab68-f23c-452a-a9e3-888c3875d84a": "sky", // Lingyan: light blue
+  "f78c1ceb-814a-4582-811c-60733b07360c": "teal", // Zach
+  "3f24ab68-f23c-452a-a9e3-888c3875d84a": "rust", // Lingyan: original orange
   "e3a2db14-f030-4482-acaa-f5c48c65f5cf": "rose", // Claire
-  "444fd3d3-29e3-4783-89d3-bfccd0348ea0": "leaf", // Caleb: light green
+  "444fd3d3-29e3-4783-89d3-bfccd0348ea0": "blue", // Caleb
   "52e6ed36-6a99-4a53-bacf-a2a3adce6a62": "green", // Elizabeth
   "ef102be5-636e-4ea7-ac12-57715c35280b": "gold", // Maya
 };
