@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Holiday Season 2026 / 2027 — Gut-Brain Neurobiology",
-  description: "Shared holiday schedule and lab responsibilities for the Laboratory of Gut-Brain Neurobiology, Duke University.",
+  title: "Lab Calendar — Gut-Brain Neurobiology",
+  description: "Shared year-end schedule and lab responsibilities for the Laboratory of Gut-Brain Neurobiology, Duke University.",
   icons: {
     icon: "/favicon.svg?v=3",
     shortcut: "/favicon.svg?v=3",

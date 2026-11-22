@@ -216,14 +216,14 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
     </header>
     <main>
       <section className="hero" aria-labelledby="hero-title">
-        <h1 id="hero-title">Holiday Season <span>2026 / 2027</span></h1>
+        <h1 id="hero-title">Lab Calendar</h1>
       </section>
       <section className="instructions" aria-labelledby="instructions-title">
         <h2 className="micro" id="instructions-title">Instructions</h2>
         <ol role="list">
-          <li>Select your profile, or enter your name and save a new profile</li>
-          <li>Add <strong>all</strong> your holiday responsibilities, including tasks you will do yourself</li>
-          <li>If you will be away, mark your days away, arrange coverage, and record the helper and dates on each affected task</li>
+          <li>Select your profile, or enter your name and save a new profile.</li>
+          <li>Add all your year-end responsibilities, including tasks you will do yourself.</li>
+          <li>If you will be away, mark your days away, arrange coverage, and record the helper and dates on each affected task.</li>
         </ol>
       </section>
       {loadError && <div className="notice error" role="alert">{loadError}<button className="subtle-button" onClick={retryLoad}>Retry</button></div>}
@@ -235,10 +235,9 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         {!saved && <p className="profile-hint">Save your profile to add responsibilities. You can leave days away blank.</p>}
       </section>
       <Responsibilities apiBase={apiBase} team={team} profile={saved} profileReady={!dirty && !loading && !saving} onDraftChange={setResponsibilityDirty} onBusyChange={setResponsibilityBusy}/>
-      <details className="calendar-secondary" id="away-settings"><summary>Your days away<span>{saved ? `${saved.days.length} saved days` : "Mark or update your holiday dates"}</span></summary>
+      <details className="calendar-secondary" id="away-settings"><summary id="your-dates">Your days away<span>{saved ? `${saved.days.length} saved days` : "Mark or update your holiday dates"}</span></summary>
       <section className="workspace" aria-labelledby="your-dates">
         <div className="editor">
-          <div className="section-heading"><h2 id="your-dates">Mark Your Days Away</h2></div>
           <div className="calendar-help"><p>Click days to select. Click again to undo.</p><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your selection</span></div>
           <div className="months">
             {MONTHS.map(({ year, month, label, foot }) => {
