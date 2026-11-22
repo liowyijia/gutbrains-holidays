@@ -59,17 +59,22 @@ test("all seven lab profiles have distinct, stable colors and Naama uses lilac",
   for (const color of colors) assert.ok(css.includes(`.event-${color}{`), `Missing ${color} style`);
 });
 
-test("the rendered calendar has 42 date cells, date-click controls and a task dialog", async () => {
+test("the clean month keeps only November date controls and blank adjacent-month slots", async () => {
   const output = path.resolve("outputs/calendar-component-check.mjs");
   await mkdir(path.dirname(output), { recursive: true });
   await build({ entryPoints: ["app/responsibilities.tsx"], bundle: true, outfile: output, format: "esm", platform: "node", packages: "external" });
   const { default: Calendar } = await import(pathToFileURL(output).href);
   const html = renderToStaticMarkup(createElement(Calendar, { apiBase: "", team: [], profile: null, profileReady: false, onChange() {}, onDraftChange() {}, onBusyChange() {} }));
   assert.equal((html.match(/role="cell"/g) || []).length, 42);
-  assert.equal((html.match(/class="day-hit-area"/g) || []).length, 42);
+  assert.equal((html.match(/class="day-hit-area"/g) || []).length, 30);
+  assert.equal((html.match(/class="task-day-cell empty-day"/g) || []).length, 12);
+  assert.doesNotMatch(html, /Add responsibility on (?:Tuesday, December 1|Saturday, October 31), 2026/);
+  assert.match(html, /id="holiday-calendar-season"/);
+  assert.match(html, /Nov 15, 2026/);
+  assert.match(html, /Jan 10, 2027/);
   assert.match(html, /Add responsibility on Sunday, November 15, 2026/);
   assert.match(html, /aria-label="Next month"/);
   assert.match(html, /<dialog[^>]+aria-labelledby="task-dialog-title"/);
   assert.equal((html.match(/type="date"/g) || []).length, 2);
-  assert.match(html, /disabled="" aria-label="Add responsibility on Sunday, November 1, 2026"/);
+  assert.match(html, /disabled="" aria-label="Add responsibility on Sunday, November 1, 2026; outside holiday planning dates" aria-describedby="holiday-calendar-season"/);
 });
