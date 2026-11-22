@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { DAYS, START, END, readable, ranges, weekend, type TeamResponse } from "@/lib/calendar";
 import { profileFromFragment, validIdentity, validProfileId } from "@/lib/edit-access";
 import Responsibilities from "./responsibilities";
+import { memberColor } from "@/lib/member-colors";
 
 const STORAGE_KEY = "days-away-profile-v1";
 const LEGACY_STORAGE_KEY = "days-away-edit-v1";
@@ -222,8 +223,8 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         <h2 className="micro" id="instructions-title">Instructions</h2>
         <ol role="list">
           <li>Select your profile, or enter your name and save a new profile</li>
-          <li>Click a calendar day to add a task; drag across days for a range</li>
-          <li>Click a task to see its details or edit your responsibilities</li>
+          <li>Add <strong>all</strong> your holiday responsibilities, including tasks you will do yourself</li>
+          <li>If you will be away, mark your days away, arrange coverage, and record the helper and dates on each affected task</li>
         </ol>
       </section>
       {loadError && <div className="notice error" role="alert">{loadError}<button className="subtle-button" onClick={retryLoad}>Retry</button></div>}
@@ -282,9 +283,9 @@ export default function HolidayCalendar({ apiBase = "", siteBase = "/", destinat
         {scheduledTeam.length > 0 ? <div className="timeline-wrap" role="region" aria-label="Team days away; scroll horizontally on smaller screens" tabIndex={0}><div className="timeline" role="table" aria-label="Shared holiday schedules" style={{ "--calendar-days": DAYS.length, minWidth: Math.max(955, 164 + DAYS.length * 15) } as CSSProperties}>
           <div className="timeline-row month-row" role="row"><span className="micro" role="columnheader">Team member</span>{TIMELINE_MONTHS.map(month => <span key={month.label} className="month-label" style={{ gridColumn: `${month.columnStart} / span ${month.count}` }} role="columnheader">{month.label.slice(0, 3).toUpperCase()} / {month.year}</span>)}</div>
           <div className="timeline-row days-row" role="row"><span role="cell"/>{DAYS.map(day => <span role="columnheader" aria-label={readable(day, { month: "long", day: "numeric", year: "numeric" })} title={readable(day, { weekday: "short", month: "short", day: "numeric" })} className={`timeline-day ${weekend(day) ? "weekend" : ""}`} key={day}>{Number(day.slice(8))}</span>)}</div>
-          {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === saved?.id ? "mine" : ""}`} key={row.id} role="row"><div className="person-label" role="rowheader" title={`${row.name}: ${ranges(row.days).join(", ")}`}><button className="profile-name" onClick={() => { void openProfile(row.id, true); }} disabled={loading || saving} aria-label={`Edit ${row.name}’s dates`}>{row.name}{row.id === saved?.id ? " (you)" : ""}</button><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
+          {scheduledTeam.map(row => <div className={`timeline-row person ${row.id === saved?.id ? "mine" : ""}`} key={row.id} role="row" style={{ "--member-color": memberColor(row.id, team) } as CSSProperties}><div className="person-label" role="rowheader" title={`${row.name}: ${ranges(row.days).join(", ")}`}><button className="profile-name" onClick={() => { void openProfile(row.id, true); }} disabled={loading || saving} aria-label={`Edit ${row.name}’s dates`}>{row.name}{row.id === saved?.id ? " (you)" : ""}</button><span>{row.days.length}d</span></div>{DAYS.map(day => <span key={day} role="cell" className={`timeline-cell ${row.days.includes(day) ? "away" : ""} ${weekend(day) ? "weekend" : ""}`} aria-label={`${row.name}, ${readable(day)}: ${row.days.includes(day) ? "away" : "not marked away"}`} title={`${row.name} · ${readable(day)} · ${row.days.includes(day) ? "Away" : "Not marked away"}`}/>)}</div>)}
         </div></div> : <div className="empty-team"><div><h3>{loading ? "Loading responses…" : loadError ? "The team calendar is temporarily unavailable." : "No saved schedules yet."}</h3><p>{loading ? "" : loadError ? "Use Retry above to load the latest responses." : "Saved days away appear here."}</p></div><div className="empty-symbol" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <span key={i}/>)}</div></div>}
-        <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch" aria-hidden="true"/>Away</span><span className="legend"><i className="swatch selected" aria-hidden="true"/>Your saved days</span></div></div>
+        <div className="team-footer"><div className="team-legend"><span className="legend"><i className="swatch member-away-swatch" aria-hidden="true"/>Days away · member colors</span></div></div>
       </section>
       </details>
     </main>

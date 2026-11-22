@@ -31,10 +31,8 @@ test("click and reverse-drag ranges preserve inclusive dates across New Year", (
   assert.equal(calendar.inSeason("2027-01-11"), false);
 });
 
-test("today uses browser-local dates and member colors remain stable", () => {
+test("today uses browser-local dates", () => {
   assert.equal(calendar.localDate(new Date(2027, 0, 1, 0, 1)), "2027-01-01");
-  assert.equal(calendar.ownerColor("member-one"), calendar.ownerColor("member-one"));
-  assert.match(calendar.ownerColor("member-two"), /^(blue|green|purple|rust|teal|rose)$/);
 });
 
 test("the rendered calendar has 42 date cells, date-click controls and a task dialog", async () => {

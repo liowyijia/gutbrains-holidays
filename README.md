@@ -45,7 +45,7 @@ CALENDAR_TEST_URL=http://127.0.0.1:5173 python3 scripts/test-calendar-api.py
 
 Save or select your existing profile at the top of the page, then click a day in **Lab Calendar** to add your responsibility. The popup pre-fills that day; drag across days on desktop to pre-fill an inclusive range, or set the start and end dates in the popup on any device. Click an existing task to see its details and edit or remove your own entry. On phones, the month calendar scrolls horizontally to keep day cells readable.
 
-Use the previous/next controls for November, December, and January, filter by member, toggle days away, or export tasks as CSV. Each task shows its title and member's name. Days away have a dashed border. Crowded dates have a “more” button opening the day's full agenda. **Your days away** and **Season overview** expand below the main calendar. The season overview shows only lab members’ days away; responsibilities stay in the month calendar. Existing task records and holiday schedules are retained. These entries retain the member as the responsibility’s owner. Optional helper coverage records who is taking over on specific dates after members arrange help themselves.
+Use the previous/next controls for November, December, and January, filter by member, toggle days away, or export tasks as CSV. Each task shows its title and member's name. Days away have a dashed border. Crowded dates have a “more” button opening the day's full agenda. **Your days away** and **Season overview** expand below the main calendar. The season overview shows only lab members’ days away; responsibilities stay in the month calendar. Existing task records and holiday schedules are retained. These entries retain the member as the responsibility’s owner. Helper coverage records who is taking over on specific dates after members arrange help themselves.
 
 Responsibilities use the existing trusted, name-only editing model. Anyone with the link can select any profile; selecting a name is not authentication. Responsibility entries are stored in the existing D1 database, linked by stable profile ID, and survive profile renames. They refresh every 30 seconds. Edits and removals use revisions to reject stale writes. The appended migration adds a separate table and leaves existing responses unchanged.
 
@@ -70,3 +70,9 @@ Additional local checks:
 
 - `node --test scripts/test-task-coverage.mjs`
 - `CALENDAR_TEST_URL=http://127.0.0.1:5173 python3 scripts/test-coverage-api.py`
+
+## Ownership, coverage, and member colors
+
+Members enter all of their holiday responsibilities, including tasks they will handle themselves. The task form identifies its responsibility owner, followed by **Coverage while away**. If the owner’s recorded days away overlap a task without a helper for those dates, the calendar shows **Coverage to arrange** and the popup lists the outstanding dates. These are derived from existing days-away and coverage records; the app does not assign helpers automatically.
+
+The supplied member colors apply to responsibility cards, days-away entries, and the season timeline: Naama `#c7add1`, Zach `#8B9DC3`, Lingyan `#ba797d`, Claire `#b6a396`, Caleb `#c3d17a`, Elizabeth `#f4e3b5`, and Maya `#f9bac9`. Full names are matched using the first name, ignoring case and surrounding whitespace. Other members receive distinct fallback colors. Coverage cards keep the original owner’s color and continue to show `Owner > Helper` on the covered dates.

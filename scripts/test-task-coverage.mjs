@@ -3,7 +3,7 @@ import test from "node:test";
 import { build } from "esbuild";
 
 const compiled = await build({ entryPoints: ["lib/task-coverage.ts"], bundle: true, write: false, format: "esm", platform: "node" });
-const { validateCoverage, helperOn, taskMatchesMember, taskPeopleLabel } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
+const { validateCoverage, helperOn, taskMatchesMember, taskPeopleLabel, uncoveredAwayDays } = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 const cover = (profileId, startDate, endDate = startDate) => ({ profileId, startDate, endDate });
 const first = cover("lingyan", "2026-12-24", "2026-12-26");
 const second = cover("tiago", "2026-12-28", "2026-12-29");
@@ -36,4 +36,12 @@ test("coverage rejects self-assignment, invalid ranges, task overflow and overla
   assert.deepEqual(validateCoverage([], "claire", task.startDate, task.endDate), []);
   assert.deepEqual(validateCoverage([second, first], "claire", task.startDate, task.endDate), [first, second]);
   assert.ok(validateCoverage([first, cover("tiago", "2026-12-27")], "claire", task.startDate, task.endDate));
+});
+
+test("outstanding coverage includes only recorded absences inside the task without a helper", () => {
+  const schedules = team.map(person => ({ ...person, days: person.id === "claire" ? ["2026-12-19", "2026-12-24", "2026-12-26", "2026-12-27", "2027-01-01"] : [] }));
+  assert.deepEqual(uncoveredAwayDays(task, schedules), ["2026-12-27"]);
+  assert.deepEqual(uncoveredAwayDays({ ...task, coverage: [] }, schedules), ["2026-12-24", "2026-12-26", "2026-12-27"]);
+  assert.deepEqual(uncoveredAwayDays(task, team), []);
+  assert.deepEqual(uncoveredAwayDays({ ...task, coverage: [{ ...first, profileId: "" }] }, schedules), ["2026-12-24", "2026-12-26", "2026-12-27"]);
 });

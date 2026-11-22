@@ -16,9 +16,9 @@ export function validateCoverage(value: unknown, ownerId: string, start: string,
   return result;
 }
 
-export function helperOn(task: Responsibility, day: string) {
+export function helperOn(task: Pick<Responsibility, "startDate" | "endDate" | "coverage">, day: string) {
   if (day < task.startDate || day > task.endDate) return undefined;
-  return task.coverage?.find(entry => day >= entry.startDate && day <= entry.endDate);
+  return task.coverage?.find(entry => !!entry.profileId && day >= entry.startDate && day <= entry.endDate);
 }
 
 export function taskMatchesMember(task: Responsibility, member: string, day?: string) {
@@ -30,4 +30,9 @@ export function taskPeopleLabel(task: Responsibility, team: TeamResponse[], day:
   const name = (id: string) => team.find(person => person.id === id)?.name || "Team member";
   const helper = helperOn(task, day);
   return helper ? `${name(task.profileId)} > ${name(helper.profileId)}` : name(task.profileId);
+}
+
+export function uncoveredAwayDays(task: Pick<Responsibility, "profileId" | "startDate" | "endDate" | "coverage">, team: TeamResponse[]) {
+  const owner = team.find(person => person.id === task.profileId);
+  return (owner?.days || []).filter(day => day >= task.startDate && day <= task.endDate && !helperOn(task, day)).sort();
 }

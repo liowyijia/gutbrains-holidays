@@ -24,9 +24,3 @@ export function selectionRange(anchor: string, end = anchor) {
 export function inSeason(day: string) {
   return day >= START && day <= END;
 }
-
-export function ownerColor(id: string) {
-  const colors = ["blue", "green", "purple", "rust", "teal", "rose"];
-  const hash = [...id].reduce((sum, character) => sum * 31 + character.charCodeAt(0) | 0, 0);
-  return colors[Math.abs(hash) % colors.length];
-}
