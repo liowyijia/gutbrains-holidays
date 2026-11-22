@@ -51,7 +51,7 @@ test("all seven lab profiles have distinct, stable colors and Naama uses lilac",
   const colors = members.map(([, id]) => calendar.ownerColor(id));
   assert.equal(new Set(colors).size, members.length);
   assert.equal(calendar.ownerColor(members[0][1]), "purple");
-  assert.equal(calendar.ownerColor(members[2][1]), "rust");
+  assert.equal(calendar.ownerColor(members[2][1]), "ochre");
   const css = readFileSync("app/globals.css", "utf8");
   for (const color of colors) assert.ok(css.includes(`.event-${color}{`), `Missing ${color} style`);
 });
