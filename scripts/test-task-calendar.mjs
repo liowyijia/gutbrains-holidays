@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { build } from "esbuild";
 import { mkdir, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
@@ -35,6 +36,24 @@ test("today uses browser-local dates and member colors remain stable", () => {
   assert.equal(calendar.localDate(new Date(2027, 0, 1, 0, 1)), "2027-01-01");
   assert.equal(calendar.ownerColor("member-one"), calendar.ownerColor("member-one"));
   assert.match(calendar.ownerColor("member-two"), /^(blue|green|purple|rust|teal|rose)$/);
+});
+
+test("all seven lab profiles have distinct, stable colors and Naama uses lilac", () => {
+  const members = [
+    ["Naama", "71db31fc-669d-4830-9391-2005f604a9c8"],
+    ["Zach", "f78c1ceb-814a-4582-811c-60733b07360c"],
+    ["Lingyan", "3f24ab68-f23c-452a-a9e3-888c3875d84a"],
+    ["Claire", "e3a2db14-f030-4482-acaa-f5c48c65f5cf"],
+    ["Caleb", "444fd3d3-29e3-4783-89d3-bfccd0348ea0"],
+    ["Elizabeth", "52e6ed36-6a99-4a53-bacf-a2a3adce6a62"],
+    ["Maya", "ef102be5-636e-4ea7-ac12-57715c35280b"],
+  ];
+  const colors = members.map(([, id]) => calendar.ownerColor(id));
+  assert.equal(new Set(colors).size, members.length);
+  assert.equal(calendar.ownerColor(members[0][1]), "purple");
+  assert.equal(calendar.ownerColor(members[2][1]), "rust");
+  const css = readFileSync("app/globals.css", "utf8");
+  for (const color of colors) assert.ok(css.includes(`.event-${color}{`), `Missing ${color} style`);
 });
 
 test("the rendered calendar has 42 date cells, date-click controls and a task dialog", async () => {
