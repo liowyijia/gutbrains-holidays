@@ -71,8 +71,8 @@ Additional local checks:
 - `node --test scripts/test-task-coverage.mjs`
 - `CALENDAR_TEST_URL=http://127.0.0.1:5173 python3 scripts/test-coverage-api.py`
 
-## Ownership, coverage, and member colors
+## Ownership and coverage
 
 Members enter all of their holiday responsibilities, including tasks they will handle themselves. The task form identifies its responsibility owner, followed by **Coverage while away**. If the owner’s recorded days away overlap a task without a helper for those dates, the calendar shows **Coverage to arrange** and the popup lists the outstanding dates. These are derived from existing days-away and coverage records; the app does not assign helpers automatically.
 
-The supplied member colors apply to responsibility cards, days-away entries, and the season timeline: Naama `#c7add1`, Zach `#8B9DC3`, Lingyan `#ba797d`, Claire `#b6a396`, Caleb `#c3d17a`, Elizabeth `#f4e3b5`, and Maya `#f9bac9`. Full names are matched using the first name, ignoring case and surrounding whitespace. Other members receive distinct fallback colors. Coverage cards keep the original owner’s color and continue to show `Owner > Helper` on the covered dates.
+Responsibility cards use the previous stable automatic color palette. Days-away entries are neutral, and the season timeline distinguishes your saved days from other members’ days away. Coverage cards keep the original owner’s color and show `Owner > Helper` on covered dates.
