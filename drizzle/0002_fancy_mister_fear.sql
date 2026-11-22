@@ -1,0 +1,1 @@
+ALTER TABLE `responsibilities` ADD `coverage` text DEFAULT '[]' NOT NULL;

@@ -1,3 +1,5 @@
+import type { TaskCoverage } from "../lib/calendar";
+import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const responses = sqliteTable("responses", {
@@ -17,6 +19,7 @@ export const responsibilities = sqliteTable("responsibilities", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   notes: text("notes").notNull().default(""),
+  coverage: text("coverage", { mode: "json" }).$type<TaskCoverage[]>().notNull().default(sql`'[]'`),
   revision: integer("revision").notNull().default(1),
   updatedAt: text("updated_at").notNull(),
 });

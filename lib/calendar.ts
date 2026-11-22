@@ -2,7 +2,8 @@ export const START = "2026-11-15";
 export const END = "2027-01-10";
 export type TeamResponse = { id: string; name: string; days: string[]; revision: number; updatedAt: string };
 export type EditIdentity = { id: string; token: string };
-export type Responsibility = { id: string; profileId: string; title: string; startDate: string; endDate: string; notes: string; revision: number; updatedAt: string };
+export type TaskCoverage = { profileId: string; startDate: string; endDate: string };
+export type Responsibility = { coverage?: TaskCoverage[]; id: string; profileId: string; title: string; startDate: string; endDate: string; notes: string; revision: number; updatedAt: string };
 
 const dayCount = Math.round((Date.parse(END + "T12:00:00Z") - Date.parse(START + "T12:00:00Z")) / 86400000) + 1;
 export const DAYS = Array.from({ length: dayCount }, (_, n) => {

@@ -45,7 +45,7 @@ CALENDAR_TEST_URL=http://127.0.0.1:5173 python3 scripts/test-calendar-api.py
 
 Save or select your existing profile at the top of the page, then click a day in **Lab Calendar** to add your responsibility. The popup pre-fills that day; drag across days on desktop to pre-fill an inclusive range, or set the start and end dates in the popup on any device. Click an existing task to see its details and edit or remove your own entry. On phones, the month calendar scrolls horizontally to keep day cells readable.
 
-Use the previous/next controls for November, December, and January, filter by member, toggle days away, or export tasks as CSV. Each task shows its title and member's name. Days away have a dashed border. Crowded dates have a “more” button opening the day's full agenda. **Your days away** and **Season overview** expand below the main calendar. The season overview shows only lab members’ days away; responsibilities stay in the month calendar. Existing task records and holiday schedules are retained. These entries describe the member's own responsibilities; there are no coverage assignments.
+Use the previous/next controls for November, December, and January, filter by member, toggle days away, or export tasks as CSV. Each task shows its title and member's name. Days away have a dashed border. Crowded dates have a “more” button opening the day's full agenda. **Your days away** and **Season overview** expand below the main calendar. The season overview shows only lab members’ days away; responsibilities stay in the month calendar. Existing task records and holiday schedules are retained. These entries retain the member as the responsibility’s owner. Optional helper coverage records who is taking over on specific dates after members arrange help themselves.
 
 Responsibilities use the existing trusted, name-only editing model. Anyone with the link can select any profile; selecting a name is not authentication. Responsibility entries are stored in the existing D1 database, linked by stable profile ID, and survive profile renames. They refresh every 30 seconds. Edits and removals use revisions to reject stale writes. The appended migration adds a separate table and leaves existing responses unchanged.
 
@@ -57,3 +57,16 @@ Verification (disposable local database only):
 - `CALENDAR_TEST_URL=http://127.0.0.1:5173 python3 scripts/test-responsibilities-api.py`
 
 Publish the Sites backend, including its migration, before pushing the updated `docs/` interface to GitHub Pages. Never run write tests against production, or commit local database state.
+
+## Helper coverage
+
+Open your responsibility, choose **Add helper** under **Helped by**, select a saved lab member, and set **Cover from** and **Cover through** within the task’s dates. Multiple helpers can cover different, non-overlapping date ranges. The owner remains responsible for arranging help before entering it. The calendar displays `Claire > Lingyan` only on Lingyan’s coverage dates, and `Claire` on other dates. Member filters also include helpers on their coverage dates; CSV exports include helper names and date ranges. The season overview remains days-away-only.
+
+If the selected helper has days away recorded during a coverage period, the popup asks the owner to check availability. This is an informational warning; the app does not send requests or claim a helper has accepted.
+
+Coverage is stored atomically with the responsibility using its existing revision check. The appended migration adds a JSON text column with a constant empty-array default; existing tasks retain their data. Older cached clients that omit coverage on update preserve saved coverage; explicitly sending an empty array removes it. Coverage dates must remain inside the task, cannot overlap, and must reference an existing profile other than the owner.
+
+Additional local checks:
+
+- `node --test scripts/test-task-coverage.mjs`
+- `CALENDAR_TEST_URL=http://127.0.0.1:5173 python3 scripts/test-coverage-api.py`
