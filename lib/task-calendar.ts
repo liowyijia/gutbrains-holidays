@@ -8,8 +8,11 @@ export function localDate(date: Date) {
 
 export function monthDays(month: string): string[] {
   const first = new Date(`${month}-01T12:00:00Z`);
-  first.setUTCDate(1 - first.getUTCDay());
-  return Array.from({ length: 42 }, (_, index) => {
+  const offset = first.getUTCDay();
+  const dayCount = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const cellCount = Math.ceil((offset + dayCount) / 7) * 7;
+  first.setUTCDate(1 - offset);
+  return Array.from({ length: cellCount }, (_, index) => {
     const date = new Date(first);
     date.setUTCDate(first.getUTCDate() + index);
     return date.toISOString().slice(0, 10);

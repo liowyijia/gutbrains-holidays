@@ -11,11 +11,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 const compiled = await build({ entryPoints: ["lib/task-calendar.ts"], bundle: true, write: false, format: "esm", platform: "node" });
 const calendar = await import("data:text/javascript;base64," + Buffer.from(compiled.outputFiles[0].text).toString("base64"));
 
-test("month grids stay Sunday-first through the year boundary", () => {
+test("month grids include only weeks that intersect the month, including year boundaries", () => {
+  const november = calendar.monthDays("2026-11");
+  assert.equal(november.length, 35);
+  assert.equal(november[0], "2026-11-01");
+  assert.equal(november.at(-1), "2026-12-05");
+  assert.equal(november.includes("2026-12-06"), false);
+  const february = calendar.monthDays("2026-02");
+  assert.equal(february.length, 28);
+  assert.equal(february.at(-1), "2026-02-28");
   const december = calendar.monthDays("2026-12");
-  assert.equal(december.length, 42);
+  assert.equal(december.length, 35);
   assert.equal(december[0], "2026-11-29");
-  assert.equal(december.at(-1), "2027-01-09");
+  assert.equal(december.at(-1), "2027-01-02");
   const january = calendar.monthDays("2027-01");
   assert.equal(january[0], "2026-12-27");
   assert.equal(january.at(-1), "2027-02-06");
@@ -65,9 +73,10 @@ test("the clean month includes labeled adjacent-month dates and date-click contr
   await build({ entryPoints: ["app/responsibilities.tsx"], bundle: true, outfile: output, format: "esm", platform: "node", packages: "external" });
   const { default: Calendar } = await import(pathToFileURL(output).href);
   const html = renderToStaticMarkup(createElement(Calendar, { apiBase: "", team: [], profile: null, profileReady: false, onChange() {}, onDraftChange() {}, onBusyChange() {} }));
-  assert.equal((html.match(/role="cell"/g) || []).length, 42);
-  assert.equal((html.match(/class="day-hit-area"/g) || []).length, 42);
-  assert.equal((html.match(/class="day-number adjacent-date /g) || []).length, 12);
+  assert.equal((html.match(/role="cell"/g) || []).length, 35);
+  assert.equal((html.match(/class="day-hit-area"/g) || []).length, 35);
+  assert.equal((html.match(/class="day-number adjacent-date /g) || []).length, 5);
+  assert.doesNotMatch(html, /Add responsibility on Sunday, December 6, 2026/);
   assert.match(html, /Add responsibility on Tuesday, December 1, 2026/);
   assert.match(html, /class="day-number adjacent-date ">Dec 1<\/span>/);
   assert.doesNotMatch(html, /empty-day|>Today<|>Export tasks CSV</);

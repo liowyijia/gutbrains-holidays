@@ -41,6 +41,7 @@ export default function Responsibilities({ apiBase, team, profile, profileReady,
     ? title !== editing.title || startDate !== editing.startDate || endDate !== editing.endDate || notes !== editing.notes || JSON.stringify(coverage) !== JSON.stringify(editing.coverage || [])
     : !!(title || notes || coverage.length || startDate !== baseline.current.start || endDate !== baseline.current.end);
   const month = CALENDAR_MONTHS[monthIndex];
+  const days = monthDays(month);
   const visible = rows.filter(row => taskMatchesMember(row, filter));
   const memberName = (id: string) => team.find(person => person.id === id)?.name || "Team member";
   const uncovered = uncoveredAwayDays({ profileId: editing?.profileId || profile?.id || "", startDate, endDate, coverage }, team);
@@ -155,7 +156,7 @@ export default function Responsibilities({ apiBase, team, profile, profileReady,
     <div className="month-grid-scroll" role="region" aria-label="Monthly lab calendar; scroll horizontally on smaller screens" aria-describedby="holiday-calendar-season" tabIndex={0}>
       <div className="task-month-grid" onPointerDownCapture={() => { suppressClick.current = false; }} role="table" aria-label={readable(month + "-01", { month: "long", year: "numeric" })}>
         <div className="task-week-header" role="row">{["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => <span role="columnheader" key={day}><span className="weekday-full">{day}</span><span className="weekday-short" aria-hidden="true">{day.slice(0, 3)}</span></span>)}</div>
-        {Array.from({ length: 6 }, (_, week) => <div className="task-week" role="row" key={week}>{monthDays(month).slice(week * 7, week * 7 + 7).map(day => {
+        {Array.from({ length: days.length / 7 }, (_, week) => <div className="task-week" role="row" key={week}>{days.slice(week * 7, week * 7 + 7).map(day => {
           const adjacentMonth = !day.startsWith(month);
           const tasks = tasksOn(day);
           const away = awayOn(day);
